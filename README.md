@@ -56,6 +56,21 @@ of fake numbers. That is a product rule, not an accident.
 | `npm run db:generate` / `db:migrate` / `db:seed` | Drizzle migrations and artifact loading |
 | `npm run create-admin` | Create/refresh an admin account from env |
 
+### Local deployment
+
+This machine runs many other apps, so the deployment script refuses to start on a busy port and
+binds to localhost only.
+
+```bash
+scripts/serve.sh 3300     # verifies the port is free, checks build + DB, starts detached
+scripts/serve.sh stop     # stops it
+```
+
+- URL: `http://127.0.0.1:3300` (French) and `http://127.0.0.1:3300/en` (English)
+- Log: `serve.log` · PID: `.serve.pid` (both git-ignored)
+- Current deployment verified on 3300; ports already taken on this Mac at deploy time: 53, 3000,
+  3002, 3773, 4001, 4322, 5000, 5174, 5433, 7000, 7880, 7881, 9230, 51704, 56531, 61608, 65372, 65509.
+
 ### Admin access
 
 ```bash
