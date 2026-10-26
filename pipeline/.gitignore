@@ -1,0 +1,3 @@
+# Python bytecode caches (the pipeline is run directly with python3).
+__pycache__/
+*.pyc

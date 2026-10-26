@@ -138,3 +138,6 @@ export function Stat({
     </div>
   );
 }
+
+// Convenience re-exports so a single import covers the primitives (kept in sync with card.tsx).
+export { Card, CardBody, CardHeader, CardTitle } from "./card";

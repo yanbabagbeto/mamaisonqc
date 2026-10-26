@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "MaMaisonQC",
+    "slug": "mamaisonqc",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "mamaisonqc",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#FBFAF7",
+    "ios": {
+      "bundleIdentifier": "ca.mamaisonqc.app",
+      "supportsTablet": true,
+      "config": {
+        "usesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "ca.mamaisonqc.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1D5B4F"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "server",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#FBFAF7"
+        }
+      ],
+      "expo-localization"
+    ]
+  }
+}

@@ -1,5 +1,5 @@
 # dependencies
-/node_modules
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -42,3 +42,13 @@ next-env.d.ts
 npm-debug.log*
 *.tsbuildinfo
 .vercel
+
+# expo / react native
+/mobile/.expo/
+/mobile/dist/
+/mobile/ios/
+/mobile/android/
+*.hbc
+*.jks
+*.keystore
+mobile/.env

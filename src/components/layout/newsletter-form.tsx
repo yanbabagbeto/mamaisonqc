@@ -5,13 +5,25 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/field";
 
+type Labels = {
+  title: string;
+  placeholder: string;
+  submit: string;
+  submitting: string;
+  hint: string;
+  success: string;
+  errorEmpty: string;
+  errorGeneric: string;
+  errorNetwork: string;
+};
+
 type Status = "idle" | "submitting" | "success" | "error";
 
 /**
  * Single opt-in subscription. No email is sent in v1: the row lands in the database
  * and the confirmation is shown inline (see docs/PRD.md non-goals).
  */
-export function NewsletterForm({ source = "footer" }: { source?: string }) {
+export function NewsletterForm({ source = "footer", labels }: { source?: string; labels: Labels }) {
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
 
@@ -21,7 +33,7 @@ export function NewsletterForm({ source = "footer" }: { source?: string }) {
     const email = String(new FormData(form).get("email") ?? "").trim();
     if (!email) {
       setStatus("error");
-      setMessage("Entrez une adresse courriel.");
+      setMessage(labels.errorEmpty);
       return;
     }
     setStatus("submitting");
@@ -37,22 +49,22 @@ export function NewsletterForm({ source = "footer" }: { source?: string }) {
         | { ok: false; error: { message: string } };
       if (!response.ok || !payload.ok) {
         setStatus("error");
-        setMessage(!payload.ok ? payload.error.message : "Inscription impossible pour le moment.");
+        setMessage(!payload.ok ? payload.error.message : labels.errorGeneric);
         return;
       }
       form.reset();
       setStatus("success");
-      setMessage("C'est noté. Vous recevrez Le Brief dès la prochaine édition.");
+      setMessage(labels.success);
     } catch {
       setStatus("error");
-      setMessage("Réseau indisponible. Réessayez dans un instant.");
+      setMessage(labels.errorNetwork);
     }
   }
 
   return (
     <form onSubmit={onSubmit} className="space-y-2" noValidate>
       <Label htmlFor={`newsletter-${source}`} className="text-sm">
-        Recevez Le Brief
+        {labels.title}
       </Label>
       <div className="flex flex-col gap-2 sm:flex-row">
         <Input
@@ -62,22 +74,20 @@ export function NewsletterForm({ source = "footer" }: { source?: string }) {
           inputMode="email"
           autoComplete="email"
           required
-          placeholder="vous@exemple.ca"
+          placeholder={labels.placeholder}
           aria-describedby={message ? `newsletter-${source}-status` : undefined}
           disabled={status === "submitting"}
         />
         <Button type="submit" size="md" className="shrink-0" disabled={status === "submitting"}>
-          {status === "submitting" ? "Inscription…" : "S'abonner"}
+          {status === "submitting" ? labels.submitting : labels.submit}
         </Button>
       </div>
       <p
         id={`newsletter-${source}-status`}
         aria-live="polite"
-        className={
-          status === "error" ? "text-xs font-medium text-danger" : "text-xs text-muted-fg"
-        }
+        className={status === "error" ? "text-xs font-medium text-danger" : "text-xs text-muted-fg"}
       >
-        {message || "Une édition par mois. Désinscription en un clic."}
+        {message || labels.hint}
       </p>
     </form>
   );

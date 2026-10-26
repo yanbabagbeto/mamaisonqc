@@ -133,6 +133,8 @@ async function seedPropertyUnits(): Promise<number> {
       valueBuildingCents: toInt(row.value_building_cents),
       valueTotalCents: toInt(row.value_total_cents),
       valuePriorCents: toIntOrNull(row.value_prior_cents),
+      lat: toFloatOrNull(row.lat),
+      lon: toFloatOrNull(row.lon),
       marketRefDate: row.market_ref_date || null,
       rollYear: toInt(row.roll_year) || new Date().getFullYear(),
       sourceUrl: row.source_url!,

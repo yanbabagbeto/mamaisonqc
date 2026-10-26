@@ -68,6 +68,8 @@ export const propertyUnit = sqliteTable(
     valueBuildingCents: integer("value_building_cents").notNull().default(0), // RL0403A
     valueTotalCents: integer("value_total_cents").notNull().default(0), // RL0404A
     valuePriorCents: integer("value_prior_cents"), // RL0405A
+    lat: real("lat"), // centroid from the georeferenced roll, when available
+    lon: real("lon"),
     marketRefDate: text("market_ref_date"), // RL0401A
     rollYear: integer("roll_year").notNull(),
     sourceUrl: text("source_url").notNull(),
@@ -255,6 +257,45 @@ export const outbox = sqliteTable(
   (t) => [index("outbox_status_idx").on(t.status, t.createdAt)],
 );
 
+
+export const savedListing = sqliteTable(
+  "saved_listing",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    listingId: text("listing_id").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (t) => [
+    uniqueIndex("saved_listing_user_idx").on(t.userId, t.listingId),
+    index("saved_listing_listing_idx").on(t.listingId),
+  ],
+);
+
+export const buyerWaitlist = sqliteTable(
+  "buyer_waitlist",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id"),
+    email: text("email").notNull(),
+    note: text("note"),
+    status: text("status").notNull().default("pending"), // pending | contacted | closed
+    createdAt: text("created_at").notNull(),
+  },
+  (t) => [index("buyer_waitlist_created_idx").on(t.createdAt), index("buyer_waitlist_email_idx").on(t.email)],
+);
+
+export const notificationPref = sqliteTable(
+  "notification_pref",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    key: text("key").notNull(), // offres | annonce | marche | conseils
+    enabled: integer("enabled").notNull().default(1),
+  },
+  (t) => [uniqueIndex("notification_pref_user_key_idx").on(t.userId, t.key)],
+);
+
 export const schemaTables = {
   dataset,
   territory,
@@ -271,6 +312,9 @@ export const schemaTables = {
   pageView,
   auditEvent,
   outbox,
+  savedListing,
+  buyerWaitlist,
+  notificationPref,
 };
 
 export const nowIso = () => sql`strftime('%Y-%m-%dT%H:%M:%fZ','now')`;

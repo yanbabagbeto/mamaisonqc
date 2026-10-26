@@ -1,0 +1,205 @@
+import type { Dictionary } from "./fr";
+
+/** English dictionary — must satisfy the French shape exactly. */
+export const en = {
+  meta: {
+    siteName: "MaMaisonQC",
+    tagline: "Quebec property values, based on official data",
+  },
+  nav: {
+    label: "Main navigation",
+    owners: "Homeowners",
+    buyers: "Buyers",
+    market: "Housing market",
+    brief: "The Brief",
+    explore: "Explore",
+    financing: "My financing",
+    faq: "FAQ",
+    login: "Sign in",
+    cta: "My home's value",
+    menu: "Open menu",
+    skip: "Skip to content",
+  },
+  localeSwitcher: {
+    label: "Language",
+    fr: "Français",
+    en: "English",
+  },
+  footer: {
+    description:
+      "Quebec property values computed from official assessment rolls and the Registre foncier — with the source of every figure.",
+    owners: "Homeowners",
+    market: "Market",
+    resources: "Resources",
+    about: "MaMaisonQC",
+    ownerLinks: {
+      hub: "Homeowner hub",
+      equity: "Calculate my equity",
+      renewal: "Mortgage renewal",
+      subsidies: "Renovation grants",
+    },
+    marketLinks: {
+      regions: "Market by region",
+      premarket: "Pre-market",
+      testMarket: "Test the market",
+      claim: "Claim my page",
+      explorer: "Explore the pre-market",
+      financing: "My financing",
+      interests: "My interests",
+      settings: "Settings",
+    },
+    resourceLinks: {
+      brief: "The Brief",
+      news: "News",
+      advice: "Guides",
+      data: "Data and sources",
+    },
+    aboutLinks: {
+      explore: "Explore",
+    financing: "My financing",
+    faq: "FAQ",
+      contact: "Contact",
+      terms: "Terms of use",
+      privacy: "Privacy",
+    },
+    attribution:
+      "Data: Rôle d'évaluation foncière du Québec (MAMH, CC-BY 4.0) · Statistiques du Registre foncier du Québec (CC-BY 4.0) · Adresses Québec (MERN, CC-BY 4.0). MaMaisonQC estimates are indicative values, not a certified appraisal nor a licensed appraiser's opinion.",
+    copyright: "All rights reserved.",
+    terms: "Terms",
+    privacy: "Privacy",
+  },
+  newsletter: {
+    title: "Get The Brief",
+    placeholder: "you@example.ca",
+    submit: "Subscribe",
+    submitting: "Subscribing…",
+    hint: "One edition a month. One-click unsubscribe.",
+    success: "You're in. The next edition lands in your inbox.",
+    errorEmpty: "Enter an email address.",
+    errorGeneric: "Subscription unavailable right now.",
+    errorNetwork: "Network unavailable. Try again in a moment.",
+  },
+  consent: {
+    title: "Your privacy",
+    body:
+      "We measure site usage with our own tools, with no advertising and no third-party trackers. You can refuse: the site works exactly the same.",
+    policy: "Privacy policy",
+    accept: "Accept",
+    refuse: "Decline",
+  },
+  search: {
+    label: "Property address",
+    placeholder: "Enter an address in Quebec",
+    results: "{count} address found|{count} addresses found",
+    searching: "Searching",
+    suggestions: "Suggested addresses",
+    available: "page available",
+    notFound: "No address found. Check the civic number and the municipality.",
+    unavailable: "Address search unavailable. Try again in a moment.",
+  },
+  common: {
+    free: "Free, no account",
+    officialData: "Open data from the Government of Quebec",
+    learnMore: "Learn more",
+    continue: "Continue",
+    seeAll: "See all",
+    back: "Back",
+    loading: "Loading…",
+    error: "Something went wrong.",
+  },
+  home: {
+    heroEyebrow: "Property valuation · Quebec",
+    heroTitleBefore: "What is your home",
+    heroTitleHighlight: "really",
+    heroTitleAfter: "worth?",
+    heroBody:
+      "An estimate grounded in the municipal assessment roll and the Registre foncier statistics. Real comparables, a range, a confidence level — and the source of every figure.",
+    cardLabel: "Sample record",
+    cardBadge: "Sourced data",
+    cardRows: [
+      "Assessment roll value",
+      "Prior roll value",
+      "Comparables — same ANU",
+      "Range and confidence",
+      "Source and licence",
+    ],
+    cardFootnoteSource: "Registre foncier",
+    cardFootnote: "Sales by price band",
+    intentsEyebrow: "Start here",
+    intentsTitle: "What brings you here?",
+    intents: [
+      {
+        title: "I own a home",
+        body: "What my house is worth today, what I could refinance, and where my mortgage stands.",
+      },
+      {
+        title: "I'm thinking of selling",
+        body: "Gauge buyer interest before listing publicly, with no commitment.",
+      },
+      {
+        title: "I'm looking for a property",
+        body: "Browse properties preparing for market, neighbourhood by neighbourhood.",
+      },
+    ],
+    whyEyebrow: "Why our numbers differ",
+    whyTitle: "Transparency, not a black box",
+    whyBody:
+      "A property estimate is judged by its method. This is exactly what MaMaisonQC shows, and what it refuses to hide.",
+    why: [
+      {
+        title: "Official data, not a black box",
+        body: "Every value starts from the assessment roll filed by the municipality. You see the roll value, its reference date and the prior roll value.",
+      },
+      {
+        title: "The assessor's own comparables",
+        body: "We compare your property with units in the same assessment neighbourhood unit (UMV), same use category and comparable area — the very grouping the assessor uses.",
+      },
+      {
+        title: "A range, not a fake precise number",
+        body: "A single estimate hides its uncertainty. We show the range and the number of comparables: few comparables means low confidence, and we say so.",
+      },
+      {
+        title: "Provenance on every screen",
+        body: "Source, publisher, licence and update date appear under the figures. CC-BY 4.0 licences require attribution: we make it visible, not buried.",
+      },
+    ],
+    whyCta: "See all data sources",
+    whyNote: "Assessment roll (MAMH), Registre foncier, Adresses Québec — CC-BY 4.0 licences.",
+    howEyebrow: "How it works",
+    howTitle: "Three steps, no silent guesswork",
+    how: [
+      { title: "You type an address", body: "Search runs on the official Adresses Québec geocoder (MERN)." },
+      {
+        title: "We read the assessment roll",
+        body: "Building, land and total values, area, year built, and the assessment neighbourhood unit.",
+      },
+      {
+        title: "We compute a range",
+        body: "A robust comparables-based estimate, with the confidence level and provenance displayed.",
+      },
+    ],
+    marketEyebrow: "Housing market",
+    marketTitle: "Quebec's market, region by region",
+    marketBody:
+      "Sales volume, price bands, registered mortgages and financial-difficulty deeds, compiled from the Registre foncier du Québec statistics.",
+    marketCta: "Explore the market",
+    premarketCta: "See the pre-market",
+    briefEyebrow: "The Brief",
+    briefTitle: "The market explained, once a month",
+    briefBody:
+      "Every edition starts from published data: what moved in sales, what it means for a mortgage renewal, and which support programs are open. No predictions, no clickbait.",
+    briefBullets: [
+      "Last period's figures, by region.",
+      "Rates and what they mean for your equity.",
+      "Grants to watch, with the official source.",
+    ],
+    faqTitle: "Frequently asked questions",
+    faqLinks: [
+      "How is the estimate calculated?",
+      "Is it really free?",
+      "Where does the data come from?",
+      "Is this the same as the municipal assessment?",
+    ],
+    faqAll: "All questions",
+  },
+} as const satisfies Dictionary;

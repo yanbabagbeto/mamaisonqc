@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { cn } from "@/components/ui/cn";
@@ -18,6 +18,24 @@ export type AddressCandidate = {
   matricule: string | null;
 };
 
+type SearchLabels = {
+  label: string;
+  placeholder: string;
+  /** "singular|plural" template with a `{count}` placeholder. */
+  results: string;
+  searching: string;
+  suggestions: string;
+  available: string;
+  notFound: string;
+  unavailable: string;
+};
+
+function formatResultCount(template: string, count: number): string {
+  const [singular, plural] = template.split("|");
+  const chosen = count > 1 ? (plural ?? singular ?? template) : (singular ?? template);
+  return chosen.replace("{count}", String(count));
+}
+
 type SearchResponse =
   | { ok: true; data: { candidates: AddressCandidate[] } }
   | { ok: false; error: { code: string; message: string } };
@@ -27,18 +45,22 @@ type SearchResponse =
  * Escape closes, and the live region announces the result count.
  */
 export function AddressSearch({
+  labels,
   autoFocus = false,
   size = "lg",
-  placeholder = "Entrez une adresse au Québec",
+  placeholder,
 }: {
+  labels: SearchLabels;
   autoFocus?: boolean;
   size?: "lg" | "md";
   placeholder?: string;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const listboxId = useId();
   const inputId = useId();
   const statusId = useId();
+  const localePrefix = pathname === "/en" || pathname?.startsWith("/en/") ? "/en" : "";
 
   const [query, setQuery] = useState("");
   const [candidates, setCandidates] = useState<AddressCandidate[]>([]);
@@ -49,13 +71,12 @@ export function AddressSearch({
   const containerRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  const trimmedQuery = query.trim();
+  /** Derived, never a setState-in-effect reset: <3 characters simply hide any stale results. */
+  const tooShort = trimmedQuery.length < 3;
+
   useEffect(() => {
-    if (query.trim().length < 3) {
-      setCandidates([]);
-      setOpen(false);
-      setError(null);
-      return;
-    }
+    if (tooShort) return;
     const timer = setTimeout(async () => {
       abortRef.current?.abort();
       const controller = new AbortController();
@@ -63,12 +84,12 @@ export function AddressSearch({
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`/api/address/search?q=${encodeURIComponent(query.trim())}`, {
+        const response = await fetch(`/api/address/search?q=${encodeURIComponent(trimmedQuery)}`, {
           signal: controller.signal,
         });
         const payload = (await response.json()) as SearchResponse;
         if (!payload.ok) {
-          setError(payload.error.message);
+          setError(labels.unavailable);
           setCandidates([]);
           setOpen(false);
           return;
@@ -78,7 +99,7 @@ export function AddressSearch({
         setActiveIndex(payload.data.candidates.length > 0 ? 0 : -1);
       } catch (cause) {
         if ((cause as Error).name === "AbortError") return;
-        setError("Recherche d'adresse indisponible. Réessayez dans un instant.");
+        setError(labels.unavailable);
         setCandidates([]);
         setOpen(false);
       } finally {
@@ -86,7 +107,7 @@ export function AddressSearch({
       }
     }, 250);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [trimmedQuery, tooShort, labels]);
 
   useEffect(() => {
     function onPointerDown(event: MouseEvent) {
@@ -101,10 +122,10 @@ export function AddressSearch({
   function go(candidate: AddressCandidate) {
     setOpen(false);
     if (candidate.matricule) {
-      router.push(`/evaluation/${encodeURIComponent(candidate.matricule)}`);
+      router.push(`${localePrefix}/evaluation/${encodeURIComponent(candidate.matricule)}`);
       return;
     }
-    router.push(`/recherche?q=${encodeURIComponent(candidate.label)}`);
+    router.push(`${localePrefix}/recherche?q=${encodeURIComponent(candidate.label)}`);
   }
 
   function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -123,9 +144,9 @@ export function AddressSearch({
       if (open && activeIndex >= 0 && candidates[activeIndex]) {
         event.preventDefault();
         go(candidates[activeIndex]);
-      } else if (query.trim().length >= 3) {
+      } else if (!tooShort) {
         event.preventDefault();
-        router.push(`/recherche?q=${encodeURIComponent(query.trim())}`);
+        router.push(`${localePrefix}/recherche?q=${encodeURIComponent(trimmedQuery)}`);
       }
       return;
     }
@@ -135,13 +156,12 @@ export function AddressSearch({
     }
   }
 
-  const activeOptionId =
-    open && activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined;
+  const activeOptionId = open && activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined;
 
   return (
     <div ref={containerRef} className="relative w-full">
       <Label htmlFor={inputId} className="sr-only">
-        Adresse de la propriété
+        {labels.label}
       </Label>
       <div className="relative">
         <Input
@@ -156,7 +176,7 @@ export function AddressSearch({
           autoComplete="off"
           autoFocus={autoFocus}
           enterKeyHint="search"
-          placeholder={placeholder}
+          placeholder={placeholder ?? labels.placeholder}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={onKeyDown}
@@ -175,23 +195,23 @@ export function AddressSearch({
 
       <p id={statusId} aria-live="polite" className="sr-only">
         {loading
-          ? "Recherche en cours"
-          : open && candidates.length > 0
-            ? `${candidates.length} adresse${candidates.length > 1 ? "s" : ""} trouvée${candidates.length > 1 ? "s" : ""}`
+          ? labels.searching
+          : open && !tooShort && candidates.length > 0
+            ? formatResultCount(labels.results, candidates.length)
             : ""}
       </p>
 
-      {error ? (
+      {error && !tooShort ? (
         <p className="mt-2 text-sm font-medium text-danger" role="alert">
           {error}
         </p>
       ) : null}
 
-      {open && candidates.length > 0 ? (
+      {open && !tooShort && candidates.length > 0 ? (
         <ul
           id={listboxId}
           role="listbox"
-          aria-label="Adresses suggérées"
+          aria-label={labels.suggestions}
           className="absolute z-30 mt-2 max-h-80 w-full overflow-auto rounded-xl border border-border bg-surface p-1 text-left shadow-[var(--shadow-lift)]"
         >
           {candidates.map((candidate, index) => (
@@ -214,7 +234,7 @@ export function AddressSearch({
                 <span className="text-xs text-muted-fg">
                   {candidate.city}
                   {candidate.postal ? ` · ${candidate.postal}` : ""}
-                  {candidate.matricule ? " · fiche disponible" : ""}
+                  {candidate.matricule ? ` · ${labels.available}` : ""}
                 </span>
               </button>
             </li>
@@ -222,9 +242,9 @@ export function AddressSearch({
         </ul>
       ) : null}
 
-      {open && !loading && query.trim().length >= 3 && candidates.length === 0 && !error ? (
+      {open && !tooShort && !loading && candidates.length === 0 && !error ? (
         <div className="absolute z-30 mt-2 w-full rounded-xl border border-border bg-surface p-4 text-sm text-ink-soft shadow-[var(--shadow-lift)]">
-          Aucune adresse trouvée. Vérifiez le numéro civique et la municipalité.
+          {labels.notFound}
         </div>
       ) : null}
     </div>

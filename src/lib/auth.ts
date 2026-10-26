@@ -65,6 +65,13 @@ export async function createUser(input: {
   return { ...row, role: row.role as "owner" | "admin" };
 }
 
+/** A real bcrypt hash used only to burn the same CPU time when the email is unknown. */
+let dummyHashPromise: Promise<string> | null = null;
+function dummyHash(): Promise<string> {
+  dummyHashPromise ??= bcrypt.hash("maisonqc-timing-equaliser", 12);
+  return dummyHashPromise;
+}
+
 export async function authenticate(email: string, password: string): Promise<SessionUser> {
   const [row] = await db
     .select()
@@ -72,7 +79,9 @@ export async function authenticate(email: string, password: string): Promise<Ses
     .where(eq(user.email, email.trim().toLowerCase()))
     .limit(1);
   if (!row) {
-    // Same message whether the email exists or not: no account enumeration.
+    // Same message AND the same bcrypt cost whether the email exists or not: no enumeration,
+    // no timing oracle (reported by the owner teammate and fixed here).
+    await verifyPassword(password, await dummyHash());
     throw new AppError("UNAUTHORIZED", "Courriel ou mot de passe invalide.");
   }
   const valid = await verifyPassword(password, row.passwordHash);

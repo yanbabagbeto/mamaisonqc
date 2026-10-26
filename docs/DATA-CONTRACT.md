@@ -28,7 +28,7 @@ From the official MAMH guide *Guide sur les données du rôle d'évaluation fonc
 | `RL0101Ax` | numéro inférieur (civic) | `addr_no` |
 | `RL0101Gx` | nom de la voie publique | `addr_street` ( + `addr_street_norm`) |
 | `RL0101Ix` | numéro d'appartement / local | `addr_suite` |
-| `RL0103Ax` | matricule (identifiant de l'unité d'évaluation) | `matricule` |
+| `RL0104A…F` | **matricule (`mat18`)** = A(4)+B(2)+C(4)+D(1)+E(3)+F(4), zero-padded — the assessor's unit identifier in the 2026 structure. `RL0103Ax` (cadastral lots) is NOT unique and is absent for some units: do not use it. | `matricule` |
 | `RL0105A` | utilisation prédominante (code CUBF) | `cubf` → `property_type` via the CUBF list |
 | `RL0107A` | numéro d'unité de voisinage (UMV) | `umv` |
 | `RL0301A` | mesure frontale du terrain (m) | `frontage_m` |
@@ -54,11 +54,16 @@ code_geo,name,level,parent_code,slug,population
 
 `data/normalized/property_units.csv`
 ```
-id,municipality_code,matricule,umv,cubf,cubf_label,property_type,addr_no,addr_street,addr_street_norm,addr_suite,land_area_m2,frontage_m,year_built,floors,value_land_cents,value_building_cents,value_total_cents,value_prior_cents,market_ref_date,roll_year,source_url,dataset_id
+id,municipality_code,matricule,umv,cubf,cubf_label,property_type,addr_no,addr_street,addr_street_norm,addr_suite,land_area_m2,frontage_m,year_built,floors,value_land_cents,value_building_cents,value_total_cents,value_prior_cents,market_ref_date,roll_year,source_url,dataset_id,lat,lon
 ```
 - `id` = `<municipality_code>-<matricule>`.
-- `property_type` ∈ `unifamiliale|copropriete|plex|terrain|non-residentiel|autre`. The mapping from CUBF
-  codes must be written to `docs/DATA.md`; unmapped codes go to `autre` (never guess a type).
+- `property_type` ∈ `unifamiliale|copropriete|plex|terrain|non-residentiel|autre`, derived only from real
+  fields: `RL0104F` (numéro de local) present → `copropriete`; `RL0311A` (nombre de logements) ≥ 2 on a
+  residential CUBF → `plex`; single dwelling residential CUBF → `unifamiliale`; CUBF terrain → `terrain`;
+  non-residential CUBF groups → `non-residentiel`; anything unmapped → `autre` (never guess).
+  The full CUBF table must be written to `docs/DATA.md`.
+- `lat`, `lon`: centroid from the georeferenced roll (`rol_unite_p_2026` MULTIPOINT layer, EPSG:4269),
+  joined on `mat18`. Empty string when the unit has no point. Never geocode or interpolate a position.
 - `addr_street_norm`: lowercase, accents removed, punctuation collapsed to single spaces, trimmed.
 - Empty string for unknown values (never `0`, `null`, `N/A`, or a mean).
 
@@ -93,10 +98,19 @@ Ingest the 2026 roll for this municipality set (code géographique):
 `66023` Montréal, `65005` Laval, `58227` Longueuil, `23027` Québec, `81017` Gatineau,
 `43027` Sherbrooke, `37067` Trois-Rivières, `58007` Brossard, `64008` Terrebonne, `75017` Saint-Jérôme.
 
-Cap: keep at most 60,000 units per municipality (deterministic sample: keep residential/condo/plex types
-first, then the rest by ascending matricule) so the SQLite file stays under ~150 MB. Record the cap in
-the report. The pipeline must accept `--municipalities` and `--max-units` flags so the full province is a
-flag away.
+Cap: keep at most 60,000 units per municipality so the SQLite file stays under ~150 MB. The sample must be
+**spatially stratified and type-stratified**, never a contiguous slice:
+
+1. Type priority first (unifamiliale / copropriete / plex, then terrain / non-residentiel / autre).
+2. Within each type, select deterministically by a stable hash of `mat18` (e.g. `sha256(mat18)` ascending),
+   **not** by `mat18` itself: `mat18` encodes the MTM grid, so ordering by it yields one contiguous central
+   strip of the municipality (measured on the first run: Montréal's 60k rows spanned only 0.026° of longitude
+   and contained zero terrain/non-residential units).
+3. Report, per municipality, the lat/lon bounding box of the kept units versus the source units, so the
+   spatial coverage is auditable.
+
+Record the cap and the bbox comparison in the report. The pipeline must accept `--municipalities` and
+`--max-units` flags so the full province is a flag away.
 
 ## 5. Validation the pipeline must prove (non-negotiable)
 
@@ -108,6 +122,8 @@ flag away.
 4. No negative values, no null in required columns, `roll_year` consistent per municipality.
 5. Sum of `market_stats.count` per region/kind matches the source total (±0).
 6. `data/manifest.json` records every source URL, fetch time and sha256 of each artifact.
+7. `matricule` (`mat18`) is unique within each municipality: assert 0 duplicates over the whole run.
+8. Every non-empty `lat`/`lon` falls inside Québec's bounding box (45–63°N, -80–-57°W); assert and report.
 
 ## 6. What the pipeline must NOT do
 

@@ -1,36 +1,126 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MaMaisonQC
 
-## Getting Started
+Consumer-facing property-value product for Québec, built on **official open data** instead of an
+opaque "AI" number. Every figure on screen carries its source, licence and reference date.
 
-First, run the development server:
+See `docs/PRD.md` (product), `docs/ARCHITECTURE.md` (contracts), `docs/adr/` (decisions),
+`docs/DATA-CONTRACT.md` (pipeline) and `docs/DATA.md` (what was actually ingested).
+
+## What it does
+
+| Surface | Route | What it answers |
+|---|---|---|
+| Valuation | `/evaluation/[matricule]` | What a property is worth, with comparables, range and confidence |
+| Search | `/recherche` | Find an address (Adresses Québec geocoder) |
+| Market | `/marche-immobilier`, `/marche-immobilier/[region]`, `/marche-immobilier/[region]/[municipalite]` | Sales, price bands, mortgages, financial-difficulty deeds by region/municipality |
+| Pre-market | `/pre-marche`, `/pre-marche/[id]`, `/pre-marche/publier`, `/tester-le-marche` | Test buyer interest before listing; civic number masked |
+| Homeowner | `/proprietaire`, `/proprietaire/equite`, `/proprietaire/hypotheque/[slug]`, `/proprietaire/subventions-renovation` | Equity, refinancing, support programs |
+| Account | `/connexion`, `/inscription`, `/proprietaire/tableau-de-bord` | Claim a property page, follow interests |
+| Content | `/le-brief`, `/nouvelles`, `/conseils`, `/faq`, `/donnees`, `/conditions`, `/confidentialite`, `/contact` | Method, sources, law, guidance |
+| Admin | `/admin/**` | Data coverage, claims, moderation, outbox |
+| Bilingual | `…` (fr) and `/en/…` (en) | Same route tree, two languages |
+
+## Stack
+
+Next.js 16 App Router (RSC, route handlers, server actions) · TypeScript strict · Tailwind v4 tokens ·
+SQLite + Drizzle ORM · Python ETL for the open-data ingest · Playwright + Vitest + axe-core ·
+Expo (React Native) app in `mobile/` for iOS/Android.
+
+Irreversible choices and rejected alternatives: `docs/adr/`.
+
+## Quickstart
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local        # optional: defaults are fine for local dev
+npm run db:migrate                # create data/mamaisonqc.db (schema only)
+python3 pipeline/run.py           # ingest official open data -> data/normalized/
+npm run db:seed                   # load artifacts into SQLite
+npm run dev                       # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Without the ETL step the app still boots: pages render their designed coverage/empty states instead
+of fake numbers. That is a product rule, not an accident.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Script | Purpose |
+|---|---|
+| `npm run dev` | Next dev server |
+| `npm run build` / `npm start` | Production build / serve |
+| `npm run typecheck` | `tsc --noEmit` (strict, `noUncheckedIndexedAccess`) |
+| `npm run lint` | ESLint |
+| `npm run test` | Vitest unit tests (`src/**/*.test.ts`) |
+| `npm run test:e2e` | Playwright (starts its own server on :3100) |
+| `npm run verify` | typecheck + lint + unit + build |
+| `npm run db:generate` / `db:migrate` / `db:seed` | Drizzle migrations and artifact loading |
+| `npm run create-admin` | Create/refresh an admin account from env |
 
-## Learn More
+### Admin access
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+ADMIN_EMAIL="you@example.ca" ADMIN_PASSWORD="a-long-dev-password" npm run create-admin
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Never commit those values; `.env*` is git-ignored.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Data and method
 
-## Deploy on Vercel
+| Dataset | Publisher | Licence | Used for |
+|---|---|---|---|
+| Rôle d'évaluation foncière du Québec (2026) | MAMH | CC-BY 4.0 | Roll values, land/building split, area, year built, assessor neighbourhood unit (UMV) |
+| Statistiques du Registre foncier | Registre foncier du Québec | CC-BY 4.0 | Sales by price band, mortgages, financial-difficulty deeds |
+| Adresses Québec (REST geocoder) | MERN | CC-BY 4.0 | Address search |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Method**: comparables within the assessor's own neighbourhood unit (UMV), same use category and
+  comparable area; P25–P75 range; confidence derived from the number and dispersion of comparables.
+  No opaque "AI model", no invented values.
+- **Provenance**: every numeric block renders `<Provenance>` (source, publisher, licence, date).
+- **Assumed limits**: the roll value is not a market value; v1 covers a documented subset of
+  municipalities; the pre-market is owner-supplied, not MLS.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Internationalisation
+
+- French at the root, English under `/en/…` (`src/proxy.ts` rewrites and sets `x-maqc-locale`).
+- `src/i18n/config.ts` (`localePath`, `htmlLang`) and `src/i18n/server.ts` (`getLocale`, `getMessages`).
+- Shared dictionaries: `src/i18n/messages/{fr,en}.ts`; per-domain dictionaries:
+  `src/modules/<module>/messages.ts`.
+- `hreflang` and `alternates.languages` declared in metadata and in the sitemap.
+
+## Mobile
+
+`mobile/` is an Expo (React Native + expo-router) application for iOS and Android consuming the JSON
+API under `/api/mobile/**`. See `mobile/README.md` for simulator/Expo Go flow and the `eas build`
+commands (an Apple/Google account is required for store binaries).
+
+## Verification
+
+```bash
+npm run verify        # typecheck + lint + unit + production build
+npm run test:e2e      # Playwright: routes, bilingual tree, a11y (axe), 375 px overflow
+```
+
+The e2e suite is written to pass with an empty database (it asserts designed empty states), so a
+fresh clone is verifiable before the ETL runs.
+
+## Repository layout
+
+```
+src/app/            routes (fr at root, en through the proxy rewrite)
+src/components/     ui primitives, layout, domain components, illustrations
+src/modules/        domain logic per bounded context (+ colocated tests)
+src/db/             drizzle schema, client, seed, csv reader
+src/i18n/           locale config, server helpers, dictionaries
+src/shared/         format, slug, errors, provenance types
+pipeline/           Python ETL (official sources -> data/normalized)
+data/               artifacts and SQLite (git-ignored)
+docs/               PRD, architecture, ADRs, data contract, data report
+tests/e2e/          Playwright specs
+mobile/             Expo native app
+```
+
+## Licence and attribution
+
+Application code: private. Data: CC-BY 4.0, attributed on every page that renders it and on
+`/donnees`. No asset, text or image from a third-party product is reused; all illustration work is
+original SVG generated in this repository.

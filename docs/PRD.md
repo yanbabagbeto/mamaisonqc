@@ -128,7 +128,9 @@ change on claim/listing/interest writes one `audit_event`.
   equals `property_unit.value_total_cents / 100` formatted `fr-CA`, and the page displays the source
   name, licence and reference date.
 - AC-2 Given the same page, when comparables render, then each comparable is from the same
-  `municipality_code` and the same `umv`, and the count shown equals the returned array length.
+  `municipality_code`; when the winning selection tier is 1 or 2 it also shares the `umv`, and any
+  wider tier (same municipality + same `cubf`) is explicitly disclosed in the UI; the count shown
+  equals the returned array length.
 - AC-3 Given a valid address query, when `/api/address/search?q=1234 rue Sainte-Catherine` is called,
   then it returns 200 with `candidates[]` where each item has `label`, `city`, `lat`, `lon`, in ≤ 2000 ms
   (warm cache) and the response is cached for 24 h.
@@ -217,3 +219,9 @@ Postgres/deploy, mortgage prequalification calculator with lender rules, saved s
 ## Changelog
 
 - 2026-10-26 Initial spec from OpenHouseQC recon + verified open-data sources.
+- 2026-10-26 AC-2 relaxed: comparable tiers are explicit; same-UMV guaranteed for tiers 1–2 only,
+  with mandatory disclosure for wider tiers. Reason: sparse neighbourhood units made a strict UMV
+  rule hide every estimate on many properties.
+- 2026-10-26 Scope extension requested by the user: bilingual FR/EN at real URLs, native iOS/Android
+  app (`mobile/`), buyer surface (map explorer, financing, saved interests, settings), original
+  imagery for every visual slot, and the local 2026 roll archives as the ingest source.

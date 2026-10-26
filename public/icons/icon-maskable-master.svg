@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="MaMaisonQC">
+  <rect width="1024" height="1024" fill="#1D5B4F"/>
+  <g transform="translate(512 512) scale(1.1) translate(-512 -512)">
+    <g fill="none" stroke="#FBFAF7" stroke-width="64" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M232 456 512 232l280 224"/>
+      <path d="M328 448v280h368V448"/>
+    </g>
+    <rect x="392" y="536" width="96" height="96" rx="8" fill="#FBFAF7"/>
+    <path d="M440 536v96M392 584h96" stroke="#1D5B4F" stroke-width="9"/>
+    <rect x="548" y="568" width="96" height="160" rx="10" fill="#D9A441"/>
+    <circle cx="624" cy="648" r="5" fill="#14453C" opacity="0.55"/>
+  </g>
+</svg>
