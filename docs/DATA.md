@@ -57,41 +57,76 @@ v1 scope is the ten municipalities of the contract (§4). The 2026 roll file is 
 each; the **roll year** (`RLM02A`) is the assessor's millésime and differs per city
 (2024–2026) — it is *not* the year in the file name.
 
-| Code | Municipalité | Unités source | Unités retenues | % | Année rôle (RLM02A) | Coordonnées | uni. | copro. | plex | terrain | non-rés. | autre |
+| Code | Municipalité | Unités source | Retenues | % | RLM02A | Coord. | uni. | copro. | plex | terrain | non-rés. | autre |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 23027 | Québec | 175478 | 60000 | 34.2% | 2025 | 60000 | 45125 | 10016 | 4859 | 0 | 0 | 0 |
+| 23027 | Québec | 175478 | 60000 | 34.2% | 2025 | 60000 | 33197 | 12812 | 8250 | 2366 | 3123 | 252 |
 | 37067 | Trois-Rivières | 52147 | 52147 | 100.0% | 2025 | 52147 | 32683 | 3006 | 8440 | 4221 | 3425 | 372 |
 | 43027 | Sherbrooke | 56325 | 56325 | 100.0% | 2025 | 56325 | 35724 | 3276 | 8775 | 4597 | 3620 | 333 |
 | 58007 | Brossard | 33501 | 33501 | 100.0% | 2025 | 33501 | 18633 | 11772 | 1118 | 815 | 1083 | 80 |
-| 58227 | Longueuil | 78904 | 60000 | 76.0% | 2025 | 60000 | 35086 | 13254 | 11660 | 0 | 0 | 0 |
+| 58227 | Longueuil | 78904 | 60000 | 76.0% | 2025 | 60000 | 31088 | 12677 | 9327 | 4009 | 2782 | 117 |
 | 64008 | Terrebonne | 44115 | 44115 | 100.0% | 2026 | 44115 | 30794 | 3877 | 3547 | 1402 | 4350 | 145 |
-| 65005 | Laval | 154876 | 60000 | 38.7% | 2025 | 60000 | 48871 | 6480 | 4649 | 0 | 0 | 0 |
-| 66023 | Montréal | 437192 | 60000 | 13.7% | 2026 | 60000 | 8620 | 37263 | 14117 | 0 | 0 | 0 |
+| 65005 | Laval | 154876 | 60000 | 38.7% | 2025 | 60000 | 36355 | 8767 | 5141 | 3742 | 5824 | 171 |
+| 66023 | Montréal | 437192 | 60000 | 13.7% | 2026 | 60000 | 14191 | 22172 | 18145 | 1128 | 4212 | 152 |
 | 75017 | Saint-Jérôme | 29857 | 29857 | 100.0% | 2026 | 29857 | 15257 | 3202 | 5452 | 2464 | 3325 | 157 |
-| 81017 | Gatineau | 103287 | 60000 | 58.1% | 2024 | 60000 | 41651 | 10327 | 8022 | 0 | 0 | 0 |
+| 81017 | Gatineau | 103287 | 60000 | 58.1% | 2024 | 60000 | 39968 | 6950 | 7762 | 2383 | 2779 | 158 |
 
 **Total: 1 165 682 source units read → 515 945 kept (44.3 %).**
 
-Cap rule applied exactly as written in §4: keep `unifamiliale|copropriete|plex` first,
-then the rest, by ascending `mat18`; at most `--max-units` (default 60 000) per
-municipality. `data/normalized/README.txt` repeats this warning with the per-city counts,
-so the artifact can never be mistaken for full coverage.
+### 2.1 Sampling rule (amended contract §4)
 
-Two consequences worth knowing (both are direct effects of that rule, not bugs):
+The cap is **type-stratified and spatially spread**, never a contiguous slice:
 
-1. In the five capped cities (Montréal, Laval, Québec, Longueuil, Gatineau) the
-   residential stock alone exceeds the cap, so the emitted rows contain **only residential
-   types** — no `terrain` and no `non-residentiel`. The per-city `propertyTypes` in
-   `ingest-report.json` are the **emitted** counts; `propertyTypesSource` gives the full
-   source distribution.
-2. `mat18` encodes the MTM division/section grid, so "ascending mat18" is also a spatial
-   ordering. The capped sample is therefore spatially biased. Measured on the emitted
-   Montréal rows: 60 000 units spanning only **0.026° of longitude** (−73.5618 to
-   −73.5357) and 0.224° of latitude (45.4467 to 45.6709) — a narrow strip through the
-   centre of the island, while the city extends from about −73.98 to −73.47. The same
-   mechanism applies to every capped city. A hash- or UMV-stratified sample would remove
-   the bias but changes the contract's selection rule; it is the recommended follow-up if
-   the valuation model needs city-wide coverage.
+1. The per-municipality cap is split across property types **proportionally to their
+   source counts** (largest remainder / Hamilton; the contract's priority order
+   `unifamiliale, copropriete, plex, terrain, non-residentiel, autre` is the tie-break, and
+   every type present gets at least one slot).
+2. Inside each type, units are selected by **ascending `sha256(mat18)`** — not by `mat18`.
+   `mat18` encodes the MTM grid, so ordering by it produced a single central strip;
+   hashing spreads the sample over the whole territory and stays fully deterministic.
+3. The per-city quotas are recorded in `ingest-report.json` →
+   `municipalities.<code>.quotas`; the rule and the cap are recorded under `cap`.
+
+This fixes the two defects measured on the first (`mat18`-ordered) run: every type is now
+present in every capped city (e.g. Montréal: terrain 1 128, non-residential 4 212), and the
+kept bounding box tracks the source bounding box.
+
+### 2.2 Spatial coverage audit (kept vs source)
+
+| Code | Municipalité | Kept lat (min–max) | Kept lon (min–max) | Source lat (min–max) | Source lon (min–max) | Source points inside kept bbox |
+|---|---|---|---|---|---|---|
+| 23027 | Québec | 46.734365 – 46.978403 | -71.538837 – -71.147075 | 46.734344 – 46.978777 | -71.538837 – -71.147075 | 175476 / 175478 (99.9989 %) |
+| 37067 | Trois-Rivières | 46.278044 – 46.464903 | -72.774286 – -72.423428 | 46.278044 – 46.464903 | -72.774286 – -72.423428 | 52147 / 52147 (100.0000 %) |
+| 43027 | Sherbrooke | 45.300253 – 45.523181 | -72.108389 – -71.806576 | 45.300253 – 45.523181 | -72.108389 – -71.806576 | 56325 / 56325 (100.0000 %) |
+| 58007 | Brossard | 45.41533 – 45.485081 | -73.504744 – -73.382542 | 45.41533 – 45.485081 | -73.504744 – -73.382542 | 33501 / 33501 (100.0000 %) |
+| 58227 | Longueuil | 45.434315 – 45.585219 | -73.525766 – -73.339131 | 45.434315 – 45.585913 | -73.525766 – -73.339131 | 78903 / 78904 (99.9987 %) |
+| 64008 | Terrebonne | 45.670185 – 45.824381 | -73.838573 – -73.487787 | 45.670185 – 45.824381 | -73.838573 – -73.487787 | 44115 / 44115 (100.0000 %) |
+| 65005 | Laval | 45.51341 – 45.699347 | -73.888861 – -73.52996 | 45.513148 – 45.699347 | -73.888864 – -73.52996 | 154874 / 154876 (99.9987 %) |
+| 66023 | Montréal | 45.415636 – 46.039723 | -73.941965 – -73.479043 | 45.414985 – 46.041578 | -73.943233 – -73.478308 | 437154 / 437192 (99.9913 %) |
+| 75017 | Saint-Jérôme | 45.746325 – 45.848908 | -74.134884 – -73.948388 | 45.746325 – 45.848908 | -74.134884 – -73.948388 | 29857 / 29857 (100.0000 %) |
+| 81017 | Gatineau | 45.379797 – 45.598856 | -75.90682 – -75.347424 | 45.196483 – 46.379193 | -75.90682 – -72.548641 | 103285 / 103287 (99.9981 %) |
+
+The last column is the share of the municipality's source points that fall inside the kept
+bounding box. It is the robust audit: a bounding box is driven by extremes, so a handful of
+isolated source units can shrink the bbox ratio — Gatineau's kept bbox covers only 18.5 % of
+its source latitude span because **4 outlier source points** (of 103 287) sit far outside the
+urban area, yet **99.998 %** of its points are inside the kept bbox. Montréal: 99.991 %.
+
+### 2.3 Coverage honesty
+
+- **(a) Ten municipalities, not the province.** Montréal, Laval, Longueuil, Québec,
+  Gatineau, Sherbrooke, Trois-Rivières, Brossard, Terrebonne, Saint-Jérôme.
+- **(b) The 515 945 rows are a sample, not full coverage.** It is type-stratified and
+  hash-spread (not a contiguous slice), but it is still 44.3 % of the source units.
+- **(c) Five of ten municipalities are capped** (Montréal, Laval, Longueuil, Québec,
+  Gatineau). Under the previous `mat18`-ordered rule those five contained *only*
+  residential types; after the amendment they contain **all six types in source
+  proportion**, so their `terrain`/`non-residentiel` counts are small but non-zero. The
+  other five (Sherbrooke, Trois-Rivières, Brossard, Terrebonne, Saint-Jérôme) are complete.
+- **(d) `roll_year` varies 2024–2026** by municipality (Gatineau 2024; Laval, Longueuil,
+  Québec, Sherbrooke, Trois-Rivières, Brossard 2025; Montréal, Terrebonne, Saint-Jérôme
+  2026). Do not present a single "2026 assessment" figure across cities.
+- **(e) 37 roll-index codes (`NR…`, `93xxx`) have no territory row**, so a province-wide
+  run would ingest units whose municipality is absent from `territories.csv`.
 
 `--max-units 0` disables the cap (whole municipality; slow and memory-hungry).
 
@@ -179,14 +214,14 @@ number is present, because the CUBF itself says *non résidentielle*.
 
 Distribution over the 1 165 682 source units, and over the emitted rows:
 
-| type | source units | emitted units |
+| type | source units | kept units |
 |---|---|---|
-| unifamiliale | 537 121 | 312 444 |
-| copropriete | 275 434 | 102 473 |
-| plex | 222 580 | 70 639 |
-| terrain | 47 664 | 13 499 |
-| non-residentiel | 79 098 | 15 803 |
-| autre | 3 785 | 1 087 |
+| unifamiliale | 537 121 | 287 890 |
+| copropriete | 275 434 | 88 511 |
+| plex | 222 580 | 75 957 |
+| terrain | 47 664 | 27 127 |
+| non-residentiel | 79 098 | 34 523 |
+| autre | 3 785 | 1 937 |
 | **total** | **1 165 682** | **515 945** |
 
 (These sum to the source total and to the emitted total; the per-city breakdown is in §2
@@ -1318,13 +1353,13 @@ No GDAL/pyproj is installed, so the pipeline reads the GeoPackage as the SQLite 
 `pipeline/validate.py` re-runs them independently from the written files
 (`data/reports/validation-report.json`).
 
-Final full-scope run (10 municipalities, 2026-10-26):
+Final full-scope run (10 municipalities, 2026-10-26, amended stratified sampling):
 
 | # | Check | Result |
 |---|---|---|
 | 1 | every municipality ≥ 100 units | **PASS** — 29 857 (min) to 60 000 (max) kept |
 | 2 | 5 units per municipality re-read from the XML, field by field | **PASS** — 50 units × 23 fields, 0 mismatches |
-| 3 | `value_total_cents ≥ value_land_cents` | **PASS** — 506 987 / 506 987 (100.000 %), 0 exceptions |
+| 3 | `value_total_cents ≥ value_land_cents` | **PASS** — 507 214 / 507 214 (100.000 %), 0 exceptions |
 | 4 | no negative values, no missing required value, `roll_year` constant per municipality | **PASS** — 515 945 rows, 0 / 0 / 0 |
 | 5 | `market_stats` sums equal source totals | **PASS** — 3 947 127 = 3 947 127, 64 pairs |
 | 6 | manifest lists every source and artifact sha256 | **PASS** — 22 sources, 4 artifacts |
@@ -1335,36 +1370,38 @@ The re-read in check 2 uses a second, independent extraction path
 (`Element.find` on the XML, not the production parser) and compares all 23 XML-derived
 columns; the comparison is embedded in the report.
 
-**Deliberate-break demonstration** (reverted):
+Check 8 is the contract's bbox test. The separate kept-vs-source coverage audit is in §2.2:
+99.991 % of Montréal's source points fall inside the kept bbox, and every city is above
+99.99 % despite some bbox spans being shrunk by a few isolated units.
+
+**Deliberate-break demonstration** (reverted; run on the final artifacts):
 
 ```text
 $ # one row changed: lat=99.000000, value_land_cents=-5
 $ python3 pipeline/validate.py ; echo $?
 [validate] total=18 | pass=15 | fail=3
-  FAIL  4. no negative values, ...   negatives: 23027-258968770010000000:value_land_cents=-5
+  FAIL  4. no negative values, ...   negatives: 23027-258894478510000000:value_land_cents=-5
   FAIL  8. coordinates inside Québec bbox ... outside bbox=1
   FAIL  6. manifest ... normalized/property_units.csv sha256 mismatch
 [validate] FAIL (3 check(s))
 1
 
-$ cp /tmp/property_units.bak data/normalized/property_units.csv
+$ cp /tmp/pu_new.bak data/normalized/property_units.csv
 $ python3 pipeline/validate.py ; echo $?
 [validate] total=18 | pass=18 | fail=0
 [validate] OK
 0
 ```
 
-The restored file's sha256 (`480fce56…fcd14`) equals the manifest entry again.
+The restored file's sha256 (`6b3e6f59…d7c61d8e`) equals the manifest entry again.
 
 ---
 
 ## 9. Known gaps and limitations
 
-- **Truncated sample** (see §2): 515 945 / 1 165 682 units; capped cities only contain
-  residential types, and the sample is spatially biased by `mat18` (Montréal: a 0.026°-wide
-  longitudinal strip, not the island). This is the single most important limitation for the
-  valuation model and should be fixed by amending the cap rule if city-wide coverage is
-  required.
+- **Truncated sample** (see §2): 515 945 / 1 165 682 units. The sample is type-stratified
+  and hash-spread, so capped cities keep every type in proportion; their `terrain` /
+  `non-residentiel` absolute counts are therefore small (e.g. Montréal 1 128 / 4 212).
 - **Plex/condo are field-derived, not CUBF codes**: `RL0104F` marks divided co-ownership
   (tenure unknown); `RL0311A ≥ 2` marks a multi-dwelling unit. A mixed building whose
   dwellings are rented or owned indifferently cannot be separated by this data.
@@ -1390,7 +1427,7 @@ The restored file's sha256 (`480fce56…fcd14`) equals the manifest entry again.
 ## 10. Reproduce
 
 ```bash
-# 1. v1 (10 municipalities, default 60 000 cap) — ~2 min on this machine
+# 1. v1 (10 municipalities, default 60 000 cap) — ~3 min on this machine (two XML passes/municipality)
 python3 pipeline/run.py
 
 # 2. the contract's acceptance command (exit 0, every artifact written)

@@ -1,20 +1,26 @@
-"""Rôle d'évaluation: streaming parser, normalisation, deterministic sampling, coordinates.
+"""Rôle d'évaluation: streaming parser, deterministic sampling, coordinates.
+
+Sampling (DATA-CONTRACT.md §4, amended): the sample must be spatially and type
+stratified. We allocate the cap across the property types proportionally to their source
+counts (largest-remainder / Hamilton, with the contract's priority order as tie-break, and
+at least one slot for every type present), then keep, inside each type, the units with the
+smallest `sha256(mat18)`. `mat18` itself encodes the MTM grid, so hashing it removes the
+contiguous-strip bias while staying fully deterministic.
 
 `xml.etree.ElementTree.iterparse` is used instead of `lxml.iterparse`: the DoD entry
-points run with the system `python3`, which has no lxml. Both parse incrementally; each
-`RLUEx` subtree is cleared as soon as it has been read, and the root is cleared
-periodically so a 795 MB Montréal file never lives in memory.
+points run with the system `python3`, which has no lxml. Each `RLUEx` subtree is cleared
+immediately so a 795 MB Montréal file never lives in memory.
 """
 
 from __future__ import annotations
 
+import hashlib
 import heapq
 import sqlite3
 import struct
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, Iterator
 from xml.etree import ElementTree as ET
 
 from . import config
@@ -55,6 +61,9 @@ WANTED = {
 
 MAT_FIELDS = ("RL0104A", "RL0104B", "RL0104C", "RL0104D", "RL0104E", "RL0104F")
 MAT_WIDTHS = (4, 2, 4, 1, 3, 4)  # sums to 18 -> the official mat18
+
+# Contract priority order, also used as the tie-break for quota allocation.
+TYPE_PRIORITY = ("unifamiliale", "copropriete", "plex", "terrain", "non-residentiel", "autre")
 
 PROPERTY_UNIT_HEADER = (
     "id",
@@ -106,6 +115,11 @@ def build_mat18(raw: dict[str, str]) -> str:
     return "".join(parts)
 
 
+def sample_hash(matricule: str) -> str:
+    """Stable, geography-independent ordering key for the stratified sample."""
+    return hashlib.sha256(matricule.encode("utf-8")).hexdigest()
+
+
 def _measure(value: str | None) -> str:
     """Physical measure: 0 means 'not applicable/absent' in these fields, so empty."""
     amount = decimal_or_none(value)
@@ -122,6 +136,14 @@ def _year_built(value: str | None) -> str:
     return str(year)
 
 
+def classify_raw(raw: dict[str, str], cubf: CubfReference) -> str:
+    return cubf.property_type(
+        (raw.get("RL0105A") or "").strip(),
+        has_local=bool((raw.get("RL0104F") or "").strip()),
+        dwellings=int_or_none(raw.get("RL0311A")),
+    )
+
+
 def normalize_unit(
     raw: dict[str, str],
     *,
@@ -133,9 +155,7 @@ def normalize_unit(
 ) -> list[str]:
     matricule = build_mat18(raw)
     cubf_code = (raw.get("RL0105A") or "").strip()
-    dwellings = int_or_none(raw.get("RL0311A"))
-    has_local = bool((raw.get("RL0104F") or "").strip())
-    property_type = cubf.property_type(cubf_code, has_local=has_local, dwellings=dwellings)
+    property_type = classify_raw(raw, cubf)
     street = (raw.get("RL0101Gx") or "").strip()
     return [
         f"{municipality_code}-{matricule}",
@@ -166,17 +186,75 @@ def normalize_unit(
     ]
 
 
-class _MaxItem:
-    """Heap item ordered so that the *largest* sort key is on top."""
+def _extract_raw(element: ET.Element) -> dict[str, str]:
+    raw: dict[str, str] = {}
+    for node in element.iter():
+        tag = node.tag
+        if tag in WANTED and tag not in raw:
+            text = (node.text or "").strip()
+            if text:
+                raw[tag] = text
+    return raw
 
-    __slots__ = ("key", "row")
 
-    def __init__(self, key: tuple[str, ...], row: list[str]):
-        self.key = key
-        self.row = row
+# --- Quotas ---------------------------------------------------------------------------
+def _hamilton(weights: dict[str, int], amount: int) -> dict[str, int]:
+    """Largest-remainder allocation; ties broken by the contract's type priority."""
+    total = sum(weights.values())
+    if amount <= 0 or total <= 0:
+        return {key: 0 for key in weights}
+    exact = {key: amount * weight / total for key, weight in weights.items()}
+    allocation = {key: int(value) for key, value in exact.items()}
+    remainder = amount - sum(allocation.values())
+    if remainder:
+        order = sorted(
+            weights,
+            key=lambda key: (-(exact[key] - allocation[key]), TYPE_PRIORITY.index(key)),
+        )
+        for key in order[:remainder]:
+            allocation[key] += 1
+    return allocation
 
-    def __lt__(self, other: "_MaxItem") -> bool:  # reversed comparison
-        return self.key > other.key
+
+def compute_quotas(type_counts: Counter, cap: int) -> dict[str, int] | None:
+    """Split the cap across types, proportionally to source counts.
+
+    Returns all counts when there is no cap (cap <= 0) or when the municipality fits.
+    Every type present in the source gets at least one slot when the cap allows it, so
+    rare types stay auditable instead of disappearing.
+    """
+    total = sum(type_counts.values())
+    if cap <= 0 or total <= cap:
+        return {key: type_counts[key] for key in TYPE_PRIORITY if type_counts.get(key, 0) > 0}
+    present = [key for key in TYPE_PRIORITY if type_counts.get(key, 0) > 0]
+    quotas = {key: 0 for key in present}
+    if cap < len(present):
+        for key in present[:cap]:
+            quotas[key] = 1
+        return quotas
+    for key in present:
+        quotas[key] = 1
+    remaining = cap - len(present)
+    capacity = {key: type_counts[key] - 1 for key in present}
+    capacity = {key: value for key, value in capacity.items() if value > 0}
+    for key, value in _hamilton(capacity, remaining).items():
+        quotas[key] += value
+    if sum(quotas.values()) != cap:
+        raise ValueError(f"quota allocation produced {sum(quotas.values())} slots, expected {cap}")
+    for key, value in quotas.items():
+        if value > type_counts[key]:
+            raise ValueError(f"quota {key}={value} exceeds source count {type_counts[key]}")
+    return quotas
+
+
+# --- Scanning and parsing -------------------------------------------------------------
+@dataclass
+class RollScan:
+    municipality_code: str
+    roll_year: int
+    total_units: int = 0
+    type_counts: Counter = field(default_factory=Counter)
+    cubf_counts: Counter = field(default_factory=Counter)
 
 
 @dataclass
@@ -185,14 +263,57 @@ class RollResult:
     roll_year: int
     total_units: int = 0
     rows: list[list[str]] = field(default_factory=list)
-    property_type_counts: Counter = field(default_factory=Counter)
-    cubf_counts: Counter = field(default_factory=Counter)
-    duplicates: int = 0
+    quotas: dict[str, int] | None = None
 
 
-def _sort_key(row: list[str]) -> tuple[str, ...]:
-    """Residential/condo/plex first, then ascending mat18 (fixed width -> lexical ok)."""
-    return ("0" if row[6] in RESIDENTIAL_TYPES else "1", row[2])
+def _check_root(
+    path: Path, root_code: str | None, municipality_code: str, roll_year: int | None
+) -> int:
+    if root_code is None:
+        raise RollFormatError(f"{path}: missing RLM01A")
+    if not same_municipality_code(root_code, municipality_code):
+        raise RollFormatError(
+            f"{path}: RLM01A={root_code!r} does not match requested code {municipality_code!r}"
+        )
+    if not roll_year:
+        raise RollFormatError(f"{path}: missing or invalid RLM02A")
+    return roll_year
+
+
+def scan_roll(path: Path, *, municipality_code: str, cubf: CubfReference) -> RollScan:
+    """First pass: source totals per property type (needed for the stratified quotas)."""
+    root_code: str | None = None
+    roll_year: int | None = None
+    scan = RollScan(municipality_code=municipality_code, roll_year=0)
+    for _, element in ET.iterparse(path, events=("end",)):
+        tag = element.tag
+        if tag == "RLM01A":
+            root_code = (element.text or "").strip()
+        elif tag == "RLM02A":
+            text = (element.text or "").strip()
+            if text:
+                roll_year = int(text)
+        elif tag == "RLUEx":
+            raw = _extract_raw(element)
+            scan.total_units += 1
+            scan.type_counts[classify_raw(raw, cubf)] += 1
+            scan.cubf_counts[(raw.get("RL0105A") or "").strip()] += 1
+            element.clear()
+    scan.roll_year = _check_root(path, root_code, municipality_code, roll_year)
+    return scan
+
+
+class _MaxItem:
+    """Heap item ordered so that the *largest* sort key is on top."""
+
+    __slots__ = ("key", "row")
+
+    def __init__(self, key: str, row: list[str]):
+        self.key = key
+        self.row = row
+
+    def __lt__(self, other: "_MaxItem") -> bool:  # reversed comparison
+        return self.key > other.key
 
 
 def parse_roll(
@@ -200,68 +321,63 @@ def parse_roll(
     *,
     municipality_code: str,
     cubf: CubfReference,
-    max_units: int,
+    quotas: dict[str, int] | None,
     dataset_id: str = config.DATASET_ROLE,
     source_url: str | None = None,
 ) -> RollResult:
+    """Second pass: keep the `sha256(mat18)`-smallest rows inside each type's quota."""
     source_url = source_url or path.name
+    root_code: str | None = None
     roll_year: int | None = None
-    seen_root_code: str | None = None
-    selector: list[_MaxItem] = []
-    result = RollResult(municipality_code=municipality_code, roll_year=0)
-    seen_matricules: set[str] = set()
+    result = RollResult(municipality_code=municipality_code, roll_year=0, quotas=quotas)
+    heaps: dict[str, list[_MaxItem]] = {key: [] for key in TYPE_PRIORITY}
+    kept_all: list[list[str]] = []
 
-    # Note: iterparse with only ('end',) does not populate `context.root`, so there is
-    # nothing to clear at the root. Each RLUEx subtree is cleared as soon as it has
-    # been read, which bounds memory to the current unit plus the (empty) sibling list.
+    if quotas is None:
+        mode = "all"
+    elif sum(quotas.values()) == 0:
+        mode = "none"
+    else:
+        mode = "stratified"
+
     for _, element in ET.iterparse(path, events=("end",)):
         tag = element.tag
         if tag == "RLM01A":
-            seen_root_code = (element.text or "").strip()
+            root_code = (element.text or "").strip()
         elif tag == "RLM02A":
             text = (element.text or "").strip()
             if text:
                 roll_year = int(text)
         elif tag == "RLUEx":
-            raw: dict[str, str] = {}
-            for node in element.iter():
-                node_tag = node.tag
-                if node_tag in WANTED and node_tag not in raw:
-                    text = (node.text or "").strip()
-                    if text:
-                        raw[node_tag] = text
             result.total_units += 1
-            row = _normalize_without_roll_year(
-                raw,
-                municipality_code=municipality_code,
-                roll_year=roll_year or 0,
-                source_url=source_url,
-                dataset_id=dataset_id,
-                cubf=cubf,
-            )
-            result.property_type_counts[row[6]] += 1
-            result.cubf_counts[row[4]] += 1
-            if row[2] in seen_matricules:
-                result.duplicates += 1
-            seen_matricules.add(row[2])
-            if max_units <= 0:
-                selector.append(_MaxItem(_sort_key(row), row))
-            elif len(selector) < max_units:
-                heapq.heappush(selector, _MaxItem(_sort_key(row), row))
-            elif _sort_key(row) < selector[0].key:
-                heapq.heapreplace(selector, _MaxItem(_sort_key(row), row))
+            if mode != "none":
+                raw = _extract_raw(element)
+                row = normalize_unit(
+                    raw,
+                    municipality_code=municipality_code,
+                    roll_year=roll_year or 0,
+                    source_url=source_url,
+                    dataset_id=dataset_id,
+                    cubf=cubf,
+                )
+                if mode == "all":
+                    kept_all.append(row)
+                else:
+                    limit = (quotas or {}).get(row[6], 0)
+                    if limit > 0:
+                        key = sample_hash(row[2])
+                        heap = heaps[row[6]]
+                        if len(heap) < limit:
+                            heapq.heappush(heap, _MaxItem(key, row))
+                        elif key < heap[0].key:
+                            heapq.heapreplace(heap, _MaxItem(key, row))
             element.clear()
 
-    if seen_root_code is None:
-        raise RollFormatError(f"{path}: missing RLM01A")
-    if not same_municipality_code(seen_root_code, municipality_code):
-        raise RollFormatError(
-            f"{path}: RLM01A={seen_root_code!r} does not match requested code {municipality_code!r}"
-        )
-    if not roll_year:
-        raise RollFormatError(f"{path}: missing or invalid RLM02A")
-    result.roll_year = roll_year
-    result.rows = [item.row for item in selector]
+    result.roll_year = _check_root(path, root_code, municipality_code, roll_year)
+    if mode == "all":
+        result.rows = kept_all
+    else:
+        result.rows = [item.row for heap in heaps.values() for item in heap]
     result.rows.sort(key=lambda row: row[2])
     return result
 
@@ -273,25 +389,6 @@ def same_municipality_code(left: str, right: str) -> bool:
     if left.isdigit() and right.isdigit():
         return left.zfill(5) == right.zfill(5)
     return left.upper() == right.upper()
-
-
-def _normalize_without_roll_year(
-    raw: dict[str, str],
-    *,
-    municipality_code: str,
-    roll_year: int,
-    source_url: str,
-    dataset_id: str,
-    cubf: CubfReference,
-) -> list[str]:
-    return normalize_unit(
-        raw,
-        municipality_code=municipality_code,
-        roll_year=roll_year,
-        source_url=source_url,
-        dataset_id=dataset_id,
-        cubf=cubf,
-    )
 
 
 # --- Coordinates ----------------------------------------------------------------------
@@ -339,6 +436,31 @@ def _wkb_first_point(buffer: bytes, offset: int) -> tuple[float, float] | None:
     return None
 
 
+def _bbox_update(box: list[float] | None, latitude: float, longitude: float) -> list[float]:
+    if box is None:
+        return [latitude, latitude, longitude, longitude]
+    if latitude < box[0]:
+        box[0] = latitude
+    if latitude > box[1]:
+        box[1] = latitude
+    if longitude < box[2]:
+        box[2] = longitude
+    if longitude > box[3]:
+        box[3] = longitude
+    return box
+
+
+def _bbox_dict(box: list[float] | None) -> dict[str, float] | None:
+    if box is None:
+        return None
+    return {
+        "minLat": round(box[0], 6),
+        "maxLat": round(box[1], 6),
+        "minLon": round(box[2], 6),
+        "maxLon": round(box[3], 6),
+    }
+
+
 def join_coordinates(
     gpkg_path: Path,
     municipality_code: str,
@@ -346,30 +468,52 @@ def join_coordinates(
     *,
     lat_index: int = 23,
     lon_index: int = 24,
-) -> tuple[int, int]:
-    """Fill lat/lon on rows from the official point layer. Returns (matched, total)."""
+) -> tuple[int, int, dict[str, float] | None, dict[str, float] | None, int]:
+    """Fill lat/lon on rows and return kept-vs-source coverage.
+
+    Returns (matched, source_points, source_bbox, kept_bbox, source_points_inside_kept_bbox).
+    The bbox comparison is what DATA-CONTRACT §4.3 asks for; the point-inside share is a
+    more robust audit for municipalities with a few far-flung outlier units (a bbox is
+    driven by extremes, the share is not).
+    """
     wanted = {row[2] for row in rows}
     if not wanted:
-        return 0, 0
+        return 0, 0, None, None, 0
     connection = sqlite3.connect(f"file:{gpkg_path}?mode=ro", uri=True)
     try:
         cursor = connection.execute(
             f"SELECT mat18, geom FROM {config.GEOPACKAGE_LAYER} WHERE code_mun = ?",
             (municipality_code,),
         )
+        source_box: list[float] | None = None
+        kept_box: list[float] | None = None
         matched = 0
+        source_points = 0
+        source_lats: list[float] = []
+        source_lons: list[float] = []
         by_matricule = {row[2]: row for row in rows}
         for mat18, geom in cursor:
-            if mat18 not in wanted:
-                continue
             point = parse_gpkg_point(geom)
             if point is None:
                 continue
             longitude, latitude = point
+            source_points += 1
+            source_lats.append(latitude)
+            source_lons.append(longitude)
+            source_box = _bbox_update(source_box, latitude, longitude)
+            if mat18 not in wanted:
+                continue
             row = by_matricule[mat18]
             row[lat_index] = f"{latitude:.6f}"
             row[lon_index] = f"{longitude:.6f}"
+            kept_box = _bbox_update(kept_box, latitude, longitude)
             matched += 1
-        return matched, len(rows)
+        inside = 0
+        if kept_box is not None:
+            min_lat, max_lat, min_lon, max_lon = kept_box
+            for latitude, longitude in zip(source_lats, source_lons, strict=True):
+                if min_lat <= latitude <= max_lat and min_lon <= longitude <= max_lon:
+                    inside += 1
+        return matched, source_points, _bbox_dict(source_box), _bbox_dict(kept_box), inside
     finally:
         connection.close()

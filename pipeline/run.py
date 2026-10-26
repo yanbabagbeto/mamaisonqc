@@ -292,37 +292,56 @@ def main(argv: list[str] | None = None) -> int:
             if xml_result.status != "ok":
                 return abort(f"roll XML for {code} unavailable: {xml_result.error}")
             try:
+                # Pass 1: source counts per type (needed to stratify the cap).
+                scan = roles.scan_roll(dest, municipality_code=code, cubf=cubf)
+                # Type-stratified quotas, then hash ordering inside each type (§4).
+                quotas = roles.compute_quotas(scan.type_counts, args.max_units)
+                # Pass 2: keep the sha256(mat18)-smallest rows per type.
                 parsed = roles.parse_roll(
                     dest,
                     municipality_code=code,
                     cubf=cubf,
-                    max_units=args.max_units,
+                    quotas=quotas,
                     dataset_id=config.DATASET_ROLE,
                     source_url=url,
                 )
-            except roles.RollFormatError as exc:
+            except (roles.RollFormatError, ValueError) as exc:
                 return abort(str(exc))
 
             matched = 0
+            source_bbox = None
+            kept_bbox = None
+            source_points = 0
+            inside_kept_bbox = 0
             if geo_available and parsed.rows:
-                matched, _ = roles.join_coordinates(gpkg_path, code, parsed.rows)
+                matched, source_points, source_bbox, kept_bbox, inside_kept_bbox = (
+                    roles.join_coordinates(gpkg_path, code, parsed.rows)
+                )
 
             for row in parsed.rows:
                 writer.writerow(row)
             total_property_units += len(parsed.rows)
-            all_cubf_counts.update(parsed.cubf_counts)
+            all_cubf_counts.update(scan.cubf_counts)
 
             emitted_types = Counter(row[6] for row in parsed.rows)
             per_municipality[code] = {
                 "name": dict(config.SCOPE).get(code, ""),
-                "sourceUnits": parsed.total_units,
+                "sourceUnits": scan.total_units,
                 "emitted": len(parsed.rows),
                 "coordinates": matched,
-                "rollYear": parsed.roll_year,
-                # Counts are for the EMITTED (capped) rows the app will load; the
+                "rollYear": scan.roll_year,
+                # Counts are for the EMITTED (sampled) rows the app will load; the
                 # source-wide distribution is kept alongside for transparency.
                 "propertyTypes": dict(sorted(emitted_types.items())),
-                "propertyTypesSource": dict(sorted(parsed.property_type_counts.items())),
+                "propertyTypesSource": dict(sorted(scan.type_counts.items())),
+                "quotas": quotas,
+                "bbox": {"source": source_bbox, "kept": kept_bbox},
+                "coverage": {
+                    "sourcePoints": source_points,
+                    "keptPoints": matched,
+                    "sourcePointsInsideKeptBbox": inside_kept_bbox,
+                    "share": round(inside_kept_bbox / source_points, 6) if source_points else None,
+                },
             }
 
             # Validation check 2 needs the written rows; validate per municipality and
@@ -333,7 +352,7 @@ def main(argv: list[str] | None = None) -> int:
                     municipality_code=code,
                     xml_path=dest,
                     rows=csv_rows,
-                    roll_year=parsed.roll_year,
+                    roll_year=scan.roll_year,
                     source_url=url,
                     dataset_id=config.DATASET_ROLE,
                     cubf=cubf,
@@ -341,8 +360,8 @@ def main(argv: list[str] | None = None) -> int:
                 )
             )
             print(
-                f"[run] {code}: {parsed.total_units} source units, {len(parsed.rows)} kept, "
-                f"roll_year={parsed.roll_year}, coordinates={matched}",
+                f"[run] {code}: {scan.total_units} source units, {len(parsed.rows)} kept, "
+                f"roll_year={scan.roll_year}, coordinates={matched}",
                 flush=True,
             )
 
@@ -369,8 +388,10 @@ def main(argv: list[str] | None = None) -> int:
         f"property_units.csv is a TRUNCATED SAMPLE: {total_property_units} of "
         f"{total_source_units} source units for {len(per_municipality)} municipality(ies), "
         f"cap = {args.max_units or 'none'} units/municipality.",
-        "Selection rule (docs/DATA-CONTRACT.md §4): unifamiliale/copropriete/plex first,",
-        "then the rest, by ascending mat18. Do not treat it as full coverage.",
+        "Selection rule (docs/DATA-CONTRACT.md §4, amended): type-stratified proportional",
+        "sample (every type present gets slots; unifamiliale/copropriete/plex first for",
+        "rounding), then ascending sha256(mat18) inside each type. The hash makes the sample",
+        "spatially uniform instead of a contiguous mat18 strip. Do not treat it as full coverage.",
         "",
         "Per municipality (kept / source units):",
     ]
@@ -474,6 +495,11 @@ def main(argv: list[str] | None = None) -> int:
     # --- 8. report -----------------------------------------------------------------
     caps = {
         "maxUnitsPerMunicipality": args.max_units,
+        "sampling": (
+            "type-stratified proportional quotas (Hamilton; contract priority order as "
+            "tie-break; at least one slot per type present), then ascending sha256(mat18) "
+            "within each type"
+        ),
         "applied": any(info["sourceUnits"] > args.max_units for info in per_municipality.values())
         if args.max_units
         else False,
