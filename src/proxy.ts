@@ -17,7 +17,11 @@ export function proxy(request: NextRequest): NextResponse {
   }
 
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-maqc-locale", defaultLocale);
+  // `/en/...` is rewritten to `/...`; the rewritten request passes through the proxy again, so an
+  // upstream decision must never be downgraded to the default locale here.
+  if (!requestHeaders.has("x-maqc-locale")) {
+    requestHeaders.set("x-maqc-locale", defaultLocale);
+  }
 
   if (pathname === "/fr" || pathname.startsWith("/fr/")) {
     const target = request.nextUrl.clone();

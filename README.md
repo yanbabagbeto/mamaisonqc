@@ -51,7 +51,7 @@ of fake numbers. That is a product rule, not an accident.
 | `npm run typecheck` | `tsc --noEmit` (strict, `noUncheckedIndexedAccess`) |
 | `npm run lint` | ESLint |
 | `npm run test` | Vitest unit tests (`src/**/*.test.ts`) |
-| `npm run test:e2e` | Playwright (starts its own server on :3100) |
+| `npm run test:e2e` | Playwright against the **production build** on :3100 (run `npm run build` first) |
 | `npm run verify` | typecheck + lint + unit + build |
 | `npm run db:generate` / `db:migrate` / `db:seed` | Drizzle migrations and artifact loading |
 | `npm run create-admin` | Create/refresh an admin account from env |
@@ -112,7 +112,7 @@ commands (an Apple/Google account is required for store binaries).
 
 ```bash
 npm run verify        # typecheck + lint + unit + production build
-npm run test:e2e      # Playwright: routes, bilingual tree, a11y (axe), 375 px overflow
+npm run build && npm run test:e2e   # Playwright against the production build (routes, bilingual tree, a11y, overflow, auth flows)
 ```
 
 The e2e suite is written to pass with an empty database (it asserts designed empty states), so a

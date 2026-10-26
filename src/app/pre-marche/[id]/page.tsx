@@ -102,13 +102,13 @@ export default async function PreMarketDetailPage({ params }: Props) {
               <dt className="text-xs font-semibold tracking-wide text-muted-fg uppercase">
                 Prix demandé
               </dt>
-              <dd className="tabular mt-1 font-display text-2xl font-extrabold text-ink">
+              <dd className="tabular mt-1 font-display text-[1.6rem] font-semibold tracking-tight text-ink">
                 {formatCad(listing.askingPriceCents)}
               </dd>
             </div>
             <div>
               <dt className="text-xs font-semibold tracking-wide text-muted-fg uppercase">Terrain</dt>
-              <dd className="tabular mt-1 font-display text-2xl font-extrabold text-ink">
+              <dd className="tabular mt-1 font-display text-[1.6rem] font-semibold tracking-tight text-ink">
                 {formatArea(listing.landAreaM2)}
               </dd>
             </div>
@@ -116,7 +116,7 @@ export default async function PreMarketDetailPage({ params }: Props) {
               <dt className="text-xs font-semibold tracking-wide text-muted-fg uppercase">
                 Intérêts exprimés
               </dt>
-              <dd className="tabular mt-1 font-display text-2xl font-extrabold text-primary">
+              <dd className="tabular mt-1 font-display text-[1.6rem] font-semibold tracking-tight text-primary">
                 {listing.interestCount}
               </dd>
             </div>

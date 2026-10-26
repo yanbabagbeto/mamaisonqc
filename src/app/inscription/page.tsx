@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { AuthAside } from "@/components/owner/auth-aside";
 import { SignUpForm } from "@/components/owner/sign-up-form";
 import { Card, CardBody } from "@/components/ui/card";
 import { Alert } from "@/components/ui/content";
@@ -57,59 +58,71 @@ export default async function InscriptionPage({
   const claimAddress = unit ? [unit.address, unit.city].filter(Boolean).join(", ") : null;
 
   return (
-    <div className="container-page max-w-xl py-14 md:py-20">
-      <p className="text-xs font-bold tracking-[0.14em] text-accent uppercase">{labels.eyebrow}</p>
-      <h1 className="mt-3 font-display text-3xl font-extrabold text-ink md:text-4xl">
-        {labels.title}
-      </h1>
-      <p className="mt-3 text-ink-soft">{labels.intro}</p>
+    <div className="container-page max-w-6xl py-10 md:py-16">
+      <div className="grid gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:items-start">
+        <div className="mx-auto w-full max-w-xl lg:mx-0">
+          <p className="text-xs font-bold tracking-[0.14em] text-accent uppercase">{labels.eyebrow}</p>
+          <h1 className="mt-3 font-display text-3xl leading-tight font-extrabold tracking-tight text-ink md:text-4xl">
+            {labels.title}
+          </h1>
+          <p className="mt-3 text-ink-soft">{labels.intro}</p>
 
-      <div className="mt-6 space-y-4">
-        {unit ? (
-          <Alert tone="primary" title={labels.claimTitle}>
-            <p>
-              {fill(labels.claimBody, {
-                address: claimAddress ?? fill(labels.claimFallback, { id: unit.matricule }),
-              })}
-            </p>
-            <p className="mt-1">{labels.claimPending}</p>
-            <p className="mt-1">
-              <Link
-                href={path(`/evaluation/${encodeURIComponent(unit.matricule)}`)}
-                className="underline underline-offset-2"
-              >
-                {m.common.viewSheet}
-              </Link>
-            </p>
-          </Alert>
-        ) : null}
+          <div className="mt-6 space-y-4">
+            {unit ? (
+              <Alert tone="primary" title={labels.claimTitle}>
+                <p>
+                  {fill(labels.claimBody, {
+                    address: claimAddress ?? fill(labels.claimFallback, { id: unit.matricule }),
+                  })}
+                </p>
+                <p className="mt-1">{labels.claimPending}</p>
+                <p className="mt-1">
+                  <Link
+                    href={path(`/evaluation/${encodeURIComponent(unit.matricule)}`)}
+                    className="underline underline-offset-2"
+                  >
+                    {m.common.viewSheet}
+                  </Link>
+                </p>
+              </Alert>
+            ) : null}
 
-        {claimRaw && !unit ? (
-          <Alert tone="warning" title={labels.claimNotFoundTitle}>
-            {labels.claimNotFoundBody}
-          </Alert>
-        ) : null}
+            {claimRaw && !unit ? (
+              <Alert tone="warning" title={labels.claimNotFoundTitle}>
+                {labels.claimNotFoundBody}
+              </Alert>
+            ) : null}
+          </div>
+
+          <Card className="mt-6 shadow-[var(--shadow-card)]">
+            <CardBody className="space-y-5 p-6 md:p-7">
+              <SignUpForm
+                initialState={initialSignUpState({ claim: claimMatricule })}
+                labels={labels}
+                termsHref={path("/conditions")}
+                privacyHref={path("/confidentialite")}
+                signInHref={path("/connexion")}
+              />
+            </CardBody>
+          </Card>
+
+          <p className="mt-6 text-xs leading-relaxed text-muted-fg">
+            {labels.enumerationNote} {labels.faqBefore}{" "}
+            <Link href={path("/faq")} className="underline underline-offset-2 hover:text-primary">
+              {labels.faqLink}
+            </Link>
+            {labels.faqAfter}
+          </p>
+        </div>
+
+        <AuthAside
+          variant="signup"
+          title={labels.asideTitle}
+          body={labels.asideBody}
+          bullets={labels.asideBullets}
+          note={labels.asideNote}
+        />
       </div>
-
-      <Card className="mt-6">
-        <CardBody className="space-y-5">
-          <SignUpForm
-            initialState={initialSignUpState({ claim: claimMatricule })}
-            labels={labels}
-            termsHref={path("/conditions")}
-            privacyHref={path("/confidentialite")}
-            signInHref={path("/connexion")}
-          />
-        </CardBody>
-      </Card>
-
-      <p className="mt-6 text-xs leading-relaxed text-muted-fg">
-        {labels.enumerationNote} {labels.faqBefore}{" "}
-        <Link href={path("/faq")} className="underline underline-offset-2 hover:text-primary">
-          {labels.faqLink}
-        </Link>
-        {labels.faqAfter}
-      </p>
     </div>
   );
 }

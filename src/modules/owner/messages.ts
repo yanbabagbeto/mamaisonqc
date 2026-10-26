@@ -274,6 +274,15 @@ const fr = {
       footerNote: "Vous arrivez d'une réclamation?",
       footerLink: "Créez votre compte depuis la fiche de la propriété",
       footerAfter: "pour que la demande soit rattachée au bon immeuble.",
+      asideTitle: "Votre maison, vos chiffres, vos décisions.",
+      asideBody:
+        "MaMaisonQC remet entre les mains des propriétaires du Québec les données officielles de leur propriété : la valeur au rôle, ses comparables et son évolution, sans jargon et sans boîte noire.",
+      asideBullets: [
+        "Suivez la valeur inscrite au rôle et son évolution",
+        "Préparez un pré-marché à votre rythme",
+        "Décidez qui voit votre adresse",
+      ],
+      asideNote: "Données ouvertes du Québec · Aucune revente de vos informations",
     },
     signUp: {
       eyebrow: "Espace propriétaire",
@@ -308,6 +317,15 @@ const fr = {
       faqBefore: "Besoin d'aide? Consultez la",
       faqLink: "FAQ",
       faqAfter: ".",
+      asideTitle: "Un espace pour décider en connaissance de cause.",
+      asideBody:
+        "Créer un compte, c'est garder le fil : la fiche de votre propriété, les marques d'intérêt des acheteurs et vos options de financement, réunis au même endroit.",
+      asideBullets: [
+        "Réclamez votre fiche et complétez-la",
+        "Recevez les marques d'intérêt des acheteurs",
+        "Calculez votre équité en quelques secondes",
+      ],
+      asideNote: "Gratuit · Sans engagement · Vos données restent les vôtres",
     },
     signOut: {
       title: "Déconnexion",
@@ -747,6 +765,15 @@ const en: OwnerMessages = {
       footerNote: "Coming from a claim?",
       footerLink: "Create your account from the property page",
       footerAfter: "so the request is attached to the right building.",
+      asideTitle: "Your home, your numbers, your decisions.",
+      asideBody:
+        "MaMaisonQC puts the official data about your property back in your hands: the roll value, its comparables and how it moved, with no jargon and no black box.",
+      asideBullets: [
+        "Follow the recorded roll value and how it evolves",
+        "Prepare a pre-market listing at your own pace",
+        "Decide who gets to see your address",
+      ],
+      asideNote: "Quebec open data · We never resell your information",
     },
     signUp: {
       eyebrow: "Owner area",
@@ -781,6 +808,15 @@ const en: OwnerMessages = {
       faqBefore: "Need help? See the",
       faqLink: "FAQ",
       faqAfter: ".",
+      asideTitle: "One place to decide with the full picture.",
+      asideBody:
+        "Creating an account keeps the thread: your property record, buyer interest and your financing options, all in one place.",
+      asideBullets: [
+        "Claim your record and complete it",
+        "Receive buyer interest as it arrives",
+        "Work out your equity in seconds",
+      ],
+      asideNote: "Free · No commitment · Your data stays yours",
     },
     signOut: {
       title: "Log out",

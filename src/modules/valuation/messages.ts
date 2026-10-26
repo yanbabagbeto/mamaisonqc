@@ -32,7 +32,7 @@ export const fr = {
   },
   roll: {
     title: "Valeur au rôle",
-    description: "Données officielles du rôle d'évaluation foncière du Québec.",
+    description: "Valeurs inscrites au rôle par la municipalité, à la date de référence ci-dessous.",
     total: "Valeur totale",
     totalHint: "Terrain et bâtiment, au rôle",
     land: "Valeur du terrain",
@@ -119,6 +119,40 @@ export const fr = {
     disclaimer:
       "MaMaisonQC n'est pas un évaluateur agréé et n'est affilié à aucune municipalité. Les seules données officielles de cette page sont les valeurs au rôle et leur date de référence.",
   },
+  detail: {
+    trigger: "Voir plus de détails",
+    title: "Fiche du rôle d'évaluation",
+    intro:
+      "Le détail de ce qui est inscrit au rôle pour cette unité d'évaluation, présenté tel quel.",
+    close: "Fermer",
+    sections: {
+      identification: "Identification",
+      characteristics: "Caractéristiques",
+      values: "Valeurs inscrites au rôle",
+    },
+    rows: {
+      address: "Adresse",
+      municipality: "Municipalité",
+      matricule: "Matricule",
+      umv: "Unité de voisinage",
+      use: "Utilisation prédominante",
+      type: "Type de propriété",
+      landArea: "Superficie du terrain",
+      frontage: "Mesure frontale",
+      yearBuilt: "Année de construction",
+      floors: "Nombre d'étages",
+      landValue: "Valeur du terrain",
+      buildingValue: "Valeur du bâtiment",
+      totalValue: "Valeur totale",
+      priorValue: "Valeur au rôle antérieur",
+      change: "Variation depuis le rôle antérieur",
+      rollYear: "Année du rôle",
+      refDate: "Date de référence du marché",
+    },
+    notAvailable: "Non inscrit",
+    note:
+      "Ces renseignements reproduisent la fiche d'évaluation foncière déposée par la municipalité. Ils ne constituent pas une évaluation marchande.",
+  },
   confidence: {
     faible: "Confiance faible",
     moyenne: "Confiance moyenne",
@@ -179,7 +213,7 @@ export const en: EvaluationMessages = {
   },
   roll: {
     title: "Assessment roll value",
-    description: "Official data from the Quebec property assessment roll.",
+    description: "Values recorded on the roll by the municipality, at the reference date below.",
     total: "Total value",
     totalHint: "Land and building, as assessed",
     land: "Land value",
@@ -258,6 +292,39 @@ export const en: EvaluationMessages = {
     equityCta: "See my financing options",
     disclaimer:
       "MaMaisonQC is not a licensed appraiser and is not affiliated with any municipality. The only official data on this page are the roll values and their reference date.",
+  },
+  detail: {
+    trigger: "See more details",
+    title: "Assessment roll record",
+    intro: "Everything the roll records for this assessment unit, presented as-is.",
+    close: "Close",
+    sections: {
+      identification: "Identification",
+      characteristics: "Characteristics",
+      values: "Values recorded on the roll",
+    },
+    rows: {
+      address: "Address",
+      municipality: "Municipality",
+      matricule: "Roll number",
+      umv: "Neighbourhood unit",
+      use: "Predominant use",
+      type: "Property type",
+      landArea: "Land area",
+      frontage: "Frontage",
+      yearBuilt: "Year built",
+      floors: "Number of floors",
+      landValue: "Land value",
+      buildingValue: "Building value",
+      totalValue: "Total value",
+      priorValue: "Prior roll value",
+      change: "Change since prior roll",
+      rollYear: "Roll year",
+      refDate: "Market reference date",
+    },
+    notAvailable: "Not recorded",
+    note:
+      "This information reproduces the assessment roll filed by the municipality. It is not a market valuation.",
   },
   confidence: {
     faible: "Low confidence",

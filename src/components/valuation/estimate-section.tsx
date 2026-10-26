@@ -85,6 +85,7 @@ export function EstimateSection({
                 label={messages.estimate.value}
                 value={formatCad(valuation.estimateCents, locale)}
                 tone="accent"
+                size="lg"
                 hint={messages.estimate.valueHint}
               />
               <Stat

@@ -75,3 +75,68 @@ test.describe("public shell", () => {
     await expect(combobox).toBeFocused();
   });
 });
+
+test.describe("auth and layout regressions", () => {
+  test("sign-up, then an authenticated dashboard renders without a server error", async ({ page }) => {
+    const email = `e2e-${Date.now()}@example.com`;
+    const password = "MotDePasseSolide123";
+
+    await page.goto("/inscription");
+    await page.locator("#signup-name, input[name='name']").first().fill("Test E2E");
+    await page.locator("#signup-email, input[name='email']").first().fill(email);
+    const passwords = page.locator("input[type='password']");
+    await passwords.nth(0).fill(password);
+    if ((await passwords.count()) > 1) await passwords.nth(1).fill(password);
+    await page.getByRole("button", { name: /Créer mon compte|Create my account/i }).first().click();
+    await page.waitForURL(/tableau-de-bord|dashboard/, { timeout: 20_000 });
+
+    const response = await page.goto("/proprietaire/tableau-de-bord?bienvenue=1");
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole("main")).toBeVisible();
+    await expect(page.locator("body")).not.toContainText(/Internal Server Error|Application error/i);
+  });
+
+  test("claim request from a signed-in session passes the same-origin guard", async ({ page }) => {
+    const email = `claim-${Date.now()}@example.com`;
+    const password = "MotDePasseSolide123";
+
+    await page.goto("/inscription");
+    await page.locator("#signup-name, input[name='name']").first().fill("Test Claim");
+    await page.locator("#signup-email, input[name='email']").first().fill(email);
+    const passwords = page.locator("input[type='password']");
+    await passwords.nth(0).fill(password);
+    if ((await passwords.count()) > 1) await passwords.nth(1).fill(password);
+    await page.getByRole("button", { name: /Créer mon compte|Create my account/i }).first().click();
+    await page.waitForURL(/tableau-de-bord|dashboard/, { timeout: 20_000 });
+
+    // networkidle so React has hydrated: a click before hydration would fire a native submit.
+    await page.goto("/reclamer-ma-page", { waitUntil: "networkidle" });
+    const matricule = page.locator("#claim-matricule");
+    await expect(matricule).toBeVisible();
+
+    // A matricule that cannot exist: the request must reach the domain layer and come back with a
+    // business NOT_FOUND, never a CSRF 403 — that is exactly the regression we are locking.
+    await matricule.fill("999999999999999999");
+    const message = page.locator("form p[aria-live]").first();
+    const before = await message.innerText();
+    // Retry the click: a first click can land before hydration attaches the submit handler.
+    await expect(async () => {
+      await page.getByRole("button", { name: /Envoyer la demande|Send request/i }).click();
+      await expect(message).not.toHaveText(before, { timeout: 3_000 });
+    }).toPass({ timeout: 30_000 });
+    const after = await message.innerText();
+    expect(after).toMatch(/couverture|coverage|not in our/i);
+    expect(after).not.toMatch(/refusée|forbidden|Requête refusée/i);
+  });
+
+  test("sign-in and sign-up screens are airy and overflow-free at 375 px", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    for (const path of ["/connexion", "/inscription", "/pre-marche", "/marche-immobilier"]) {
+      await page.goto(path);
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow, `${path} overflows at 375 px`).toBeLessThanOrEqual(1);
+    }
+  });
+});

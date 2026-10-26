@@ -125,8 +125,11 @@ change on claim/listing/interest writes one `audit_event`.
 ## 5. Acceptance criteria
 
 - AC-1 Given a seeded matricule, when `/evaluation/[matricule]` loads, then the total roll value shown
-  equals `property_unit.value_total_cents / 100` formatted `fr-CA`, and the page displays the source
-  name, licence and reference date.
+  equals `property_unit.value_total_cents / 100` formatted in the active locale, and a "see more
+  details" dialog opens with the full roll record (identification, characteristics, values, reference
+  date). **The dataset name, publisher, licence and source URL are NOT displayed on this page**
+  (product-owner decision 2026-10-26); site-level attribution remains in the footer to satisfy the
+  CC-BY 4.0 licences.
 - AC-2 Given the same page, when comparables render, then each comparable is from the same
   `municipality_code`; when the winning selection tier is 1 or 2 it also shares the `umv`, and any
   wider tier (same municipality + same `cubf`) is explicitly disclosed in the UI; the count shown
@@ -222,6 +225,10 @@ Postgres/deploy, mortgage prequalification calculator with lender rules, saved s
 - 2026-10-26 AC-2 relaxed: comparable tiers are explicit; same-UMV guaranteed for tiers 1–2 only,
   with mandatory disclosure for wider tiers. Reason: sparse neighbourhood units made a strict UMV
   rule hide every estimate on many properties.
+- 2026-10-26 AC-1 changed: the evaluation page no longer shows the dataset provenance block; the same
+  information is available through a "see more details" dialog rendering the roll record, and site-level
+  attribution stays in the footer. Reason: the product owner considers the data source confidential.
+  Risk accepted: page-level CC-BY attribution no longer visible — footer attribution must not be removed.
 - 2026-10-26 Scope extension requested by the user: bilingual FR/EN at real URLs, native iOS/Android
   app (`mobile/`), buyer surface (map explorer, financing, saved interests, settings), original
   imagery for every visual slot, and the local 2026 roll archives as the ingest source.

@@ -82,7 +82,7 @@ export default async function AdminOverviewPage() {
                 <span className="text-xs font-semibold tracking-wide text-muted-fg uppercase">
                   {card.label}
                 </span>
-                <span className="tabular mt-1 block font-display text-2xl font-extrabold text-ink">
+                <span className="tabular mt-1 block font-display text-[1.5rem] font-semibold tracking-tight text-ink">
                   {card.value}
                 </span>
               </Link>

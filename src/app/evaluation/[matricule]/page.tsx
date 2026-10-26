@@ -3,14 +3,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ComparablesTable } from "@/components/valuation/comparables-table";
+import { RollDetailDialog } from "@/components/valuation/roll-detail-dialog";
 import { EstimateSection } from "@/components/valuation/estimate-section";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, Badge, EmptyState, Stat } from "@/components/ui/content";
-import { Provenance } from "@/components/ui/provenance";
+import { Badge, EmptyState, Stat } from "@/components/ui/content";
 import { localePath, type Locale } from "@/i18n/config";
 import { getLocale } from "@/i18n/server";
 import { getEvaluationPageData } from "@/modules/valuation/data";
+import { buildRollDetailSections } from "@/modules/valuation/detail-sections";
 import { formatAddress } from "@/modules/valuation/labels";
 import { messagesFor, propertyTypeLabel } from "@/modules/valuation/messages";
 import { formatCad, formatDateFr } from "@/shared/format";
@@ -67,14 +68,15 @@ export default async function EvaluationPage({ params }: EvaluationPageProps) {
   if (!data) notFound();
 
   const messages = messagesFor(locale);
-  const { unit, municipality, provenance, valuation } = data;
+  const { unit, municipality, valuation } = data;
   const address = formatAddress(unit, messages.addressFallback);
   const city = municipality?.name ?? null;
   const place = city ?? messages.breadcrumb.geographicCode(unit.municipalityCode);
-  const datasetIds = provenance.map((item) => item.datasetId).join(",");
   const hasComparables = valuation.comparablesCount > 0;
   const priorValue =
     unit.valuePriorCents !== null && unit.valuePriorCents > 0 ? unit.valuePriorCents : null;
+
+  const detailSections = buildRollDetailSections(unit, municipality?.name ?? null, messages, locale);
 
   return (
     <>
@@ -135,22 +137,33 @@ export default async function EvaluationPage({ params }: EvaluationPageProps) {
       </header>
 
       <div className="container-page grid gap-8 py-10 lg:grid-cols-[1.55fr_0.75fr] lg:items-start">
-        <div className="space-y-10">
+        {/* min-w-0: without it the comparables table's min-width blows the grid column past the viewport. */}
+        <div className="min-w-0 space-y-10">
           <section aria-labelledby="valeur-au-role">
-            <h2 id="valeur-au-role" className="font-display text-2xl font-bold text-ink">
-              {messages.roll.title}
-            </h2>
-            <p className="mt-1 text-sm text-muted-fg">{messages.roll.description}</p>
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 id="valeur-au-role" className="font-display text-2xl font-bold text-ink">
+                  {messages.roll.title}
+                </h2>
+                <p className="mt-1 text-sm text-muted-fg">{messages.roll.description}</p>
+              </div>
+              <RollDetailDialog
+                triggerLabel={messages.detail.trigger}
+                title={messages.detail.title}
+                intro={messages.detail.intro}
+                closeLabel={messages.detail.close}
+                sections={detailSections}
+                note={messages.detail.note}
+              />
+            </div>
             <Card className="mt-4">
               <CardBody>
-                <dl
-                  className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4"
-                  data-provenance={datasetIds || undefined}
-                >
+                <dl className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                   <Stat
                     label={messages.roll.total}
                     value={formatCad(unit.valueTotalCents, locale)}
                     tone="accent"
+                    size="lg"
                     hint={messages.roll.totalHint}
                   />
                   <Stat label={messages.roll.land} value={formatCad(unit.valueLandCents, locale)} />
@@ -221,33 +234,7 @@ export default async function EvaluationPage({ params }: EvaluationPageProps) {
           </section>
         </div>
 
-        <aside className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>{messages.sidebar.sourceTitle}</CardTitle>
-            </CardHeader>
-            <CardBody className="space-y-3">
-              {provenance.length > 0 ? (
-                <Provenance items={provenance} />
-              ) : (
-                <Alert tone="warning" title={messages.sidebar.sourceMissingTitle}>
-                  {messages.sidebar.sourceMissingBody}
-                </Alert>
-              )}
-              <p className="text-xs leading-relaxed text-muted-fg">
-                {messages.sidebar.estimateNote}
-              </p>
-              <a
-                href={unit.sourceUrl}
-                rel="noreferrer noopener"
-                target="_blank"
-                className="inline-flex text-xs font-semibold text-primary underline decoration-dotted underline-offset-2"
-              >
-                {messages.sidebar.sourceLink}
-              </a>
-            </CardBody>
-          </Card>
-
+        <aside className="min-w-0 space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>{messages.sidebar.claimTitle}</CardTitle>

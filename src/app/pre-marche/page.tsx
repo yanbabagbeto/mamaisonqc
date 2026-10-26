@@ -104,7 +104,7 @@ export default async function PreMarketPage() {
                       <dt className="text-xs font-semibold tracking-wide text-muted-fg uppercase">
                         Prix demandé
                       </dt>
-                      <dd className="tabular font-display text-xl font-extrabold text-ink">
+                      <dd className="tabular font-display text-lg font-semibold tracking-tight text-ink">
                         {formatCad(listing.askingPriceCents)}
                       </dd>
                     </div>
@@ -112,7 +112,7 @@ export default async function PreMarketPage() {
                       <dt className="text-xs font-semibold tracking-wide text-muted-fg uppercase">
                         Intérêts
                       </dt>
-                      <dd className="tabular font-display text-xl font-extrabold text-primary">
+                      <dd className="tabular font-display text-lg font-semibold tracking-tight text-primary">
                         {listing.interestCount}
                       </dd>
                     </div>

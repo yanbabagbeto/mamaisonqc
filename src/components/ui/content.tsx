@@ -115,26 +115,32 @@ export function Stat({
   value,
   hint,
   tone,
+  size = "md",
   className,
 }: {
   label: string;
   value: ReactNode;
   hint?: ReactNode;
+  /** "accent" highlights the one figure the block is about (rendered in the brand green). */
   tone?: "accent";
+  size?: "md" | "lg";
   className?: string;
 }) {
   return (
     <div className={cn("min-w-0", className)}>
-      <dt className="text-xs font-semibold tracking-wide text-muted-fg uppercase">{label}</dt>
+      <dt className="text-[0.68rem] font-semibold tracking-[0.1em] text-muted-fg uppercase">
+        {label}
+      </dt>
       <dd
         className={cn(
-          "tabular mt-1 font-display text-2xl font-extrabold",
-          tone === "accent" ? "text-accent" : "text-ink",
+          "tabular mt-1.5 font-display font-semibold tracking-tight",
+          size === "lg" ? "text-[1.9rem] leading-none sm:text-[2.15rem]" : "text-[1.4rem] leading-tight",
+          tone === "accent" ? "text-primary" : "text-ink",
         )}
       >
         {value}
       </dd>
-      {hint ? <p className="mt-1 text-xs text-muted-fg">{hint}</p> : null}
+      {hint ? <p className="mt-1.5 text-xs leading-relaxed text-muted-fg">{hint}</p> : null}
     </div>
   );
 }

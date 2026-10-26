@@ -2,24 +2,48 @@ import { env } from "@/lib/env";
 import { AppError } from "@/shared/errors";
 
 /**
- * CSRF defence for cookie-authenticated mutations: the browser always sends Origin on a
- * cross-site POST, so a same-origin check rejects forged form posts. SameSite=Lax on the
- * session cookie is the second layer.
+ * CSRF defence for cookie-authenticated mutations.
+ *
+ * The browser always sends `Origin` on a cross-site POST, so comparing it to the origin this
+ * request was actually served from rejects forged form posts — while still working when the app
+ * runs on another host/port than `SITE_URL` (local deployment, preview URL, proxy).
+ * `SITE_URL` is accepted as an additional allowed origin for reverse-proxy setups where the
+ * internal request URL differs from the public one.
  */
 export function assertSameOrigin(request: Request): void {
-  const origin = request.headers.get("origin");
-  if (!origin) {
-    // Same-origin non-CORS requests from older clients: fall back to the Referer host.
-    const referer = request.headers.get("referer");
-    if (!referer) return;
+  const originHeader = request.headers.get("origin");
+  const referer = request.headers.get("referer");
+
+  let claimed: string | null = originHeader;
+  if (!claimed && referer) {
     try {
-      if (new URL(referer).origin === new URL(env.SITE_URL).origin) return;
+      claimed = new URL(referer).origin;
     } catch {
       throw new AppError("FORBIDDEN", "Requête refusée.");
     }
-    throw new AppError("FORBIDDEN", "Requête refusée.");
   }
-  if (origin !== new URL(env.SITE_URL).origin) {
+  // No Origin and no Referer: a non-browser client (curl, mobile app). Cookie auth still applies,
+  // SameSite=Lax still blocks cross-site cookie sending, so this is not a CSRF vector.
+  if (!claimed) return;
+
+  const allowed = new Set<string>();
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  if (forwardedHost && forwardedProto) {
+    allowed.add(`${forwardedProto}://${forwardedHost}`);
+  }
+  try {
+    allowed.add(new URL(request.url).origin);
+  } catch {
+    // ignore malformed request URLs
+  }
+  try {
+    allowed.add(new URL(env.SITE_URL).origin);
+  } catch {
+    // ignore malformed SITE_URL
+  }
+
+  if (!allowed.has(claimed)) {
     throw new AppError("FORBIDDEN", "Requête refusée.");
   }
 }

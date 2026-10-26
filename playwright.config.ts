@@ -23,7 +23,8 @@ export default defineConfig({
     { name: "mobile", use: { ...devices["iPhone 13"] } },
   ],
   webServer: {
-    command: `npm run dev -- --port ${PORT}`,
+    // Production build on purpose: we verify what we deploy. Run `npm run build` first.
+    command: `npm run start -- --port ${PORT}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
