@@ -21,7 +21,7 @@
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "better-sqlite3": "^12.4.1",
-    "drizzle-orm": "^0.44.7",
+    "drizzle-orm": "^0.45.2",
     "gray-matter": "^4.0.3",
     "leaflet": "^1.9.4",
     "marked": "^16.4.1",
@@ -46,6 +46,6 @@
     "tailwindcss": "^4",
     "tsx": "^4.20.6",
     "typescript": "^5",
-    "vitest": "^3.2.4"
+    "vitest": "^5.0.5"
   }
 }
