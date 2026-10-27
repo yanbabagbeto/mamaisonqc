@@ -15,19 +15,62 @@ import { listPublicListings } from "@/modules/premarket";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Pré-marché — des propriétés avant leur mise en marché",
-  description:
-    "Découvrez des propriétés québécoises en préparation de vente, avec l'adresse masquée et le prix demandé par le propriétaire. Exprimez votre intérêt directement.",
-  alternates: { canonical: "/pre-marche" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const isEn = locale === "en";
+  return {
+    title: isEn ? "Pre-market — properties before they are listed" : "Pré-marché — des propriétés avant leur mise en marché",
+    description: isEn
+      ? "Discover Quebec properties being prepared for sale, with the address masked and the owner's asking price. Express your interest directly."
+      : "Découvrez des propriétés québécoises en préparation de vente, avec l'adresse masquée et le prix demandé par le propriétaire. Exprimez votre intérêt directement.",
+    alternates: {
+      canonical: localePath("/pre-marche", locale),
+      languages: { "fr-CA": "/pre-marche", "en-CA": "/en/pre-marche" },
+    },
+  };
+}
 
-const HORIZON_LABEL: Record<string, string> = {
-  "0-3": "D'ici 3 mois",
-  "3-6": "Dans 3 à 6 mois",
-  "6-12": "Dans 6 à 12 mois",
-  "12+": "Dans plus d'un an",
-};
+const COPY = {
+  fr: {
+    horizon: { "0-3": "D'ici 3 mois", "3-6": "Dans 3 à 6 mois", "6-12": "Dans 6 à 12 mois", "12+": "Dans plus d'un an" },
+    eyebrow: "Pré-marché",
+    title: "Des propriétés avant qu'elles soient à vendre",
+    intro:
+      "Un propriétaire qui prépare sa vente publie ici une fiche volontairement masquée : le nom de la rue et la ville, jamais le numéro civique. Vous exprimez un intérêt, il vous répond.",
+    emptyTitle: "Aucune propriété en pré-marché pour l'instant",
+    emptyBody:
+      "Le pré-marché se remplit au fur et à mesure que des propriétaires publient leur projet de vente. Si vous possédez une propriété couverte, vous pouvez publier la vôtre gratuitement.",
+    publish: "Publier ma propriété",
+    understand: "Comprendre le pré-marché",
+    asking: "Prix demandé",
+    interests: "Intérêts",
+    see: "Voir la fiche et exprimer un intérêt",
+    ctaTitle: "Vous vendez bientôt?",
+    ctaBody:
+      "Publier une fiche de pré-marché ne vous engage à rien et ne rend pas votre adresse publique. Vous décidez à qui vous répondez.",
+    ctaButton: "Publier en pré-marché",
+  },
+  en: {
+    horizon: { "0-3": "Within 3 months", "3-6": "In 3 to 6 months", "6-12": "In 6 to 12 months", "12+": "In over a year" },
+    eyebrow: "Pre-market",
+    title: "Properties before they are listed",
+    intro:
+      "An owner preparing a sale publishes a deliberately masked listing here: the street name and city, never the civic number. You express interest, the owner answers.",
+    emptyTitle: "No pre-market property yet",
+    emptyBody:
+      "The pre-market fills up as owners publish their selling plans. If you own a covered property, you can publish yours for free.",
+    publish: "Publish my property",
+    understand: "Understand the pre-market",
+    asking: "Asking price",
+    interests: "Interests",
+    see: "Open the listing and express interest",
+    ctaTitle: "Selling soon?",
+    ctaBody:
+      "Publishing a pre-market listing commits you to nothing and does not make your address public. You decide who gets an answer.",
+    ctaButton: "Publish on the pre-market",
+  },
+} as const;
+
 
 export default async function PreMarketPage() {
   const [listings, user, locale] = await Promise.all([
@@ -35,6 +78,7 @@ export default async function PreMarketPage() {
     getCurrentUser(),
     getLocale(),
   ]);
+  const t = COPY[locale];
   const savedIds = user ? await listSavedListingIds(user.id) : [];
   const savedLabels = messagesFor(locale).saved;
   const loginHref = `${localePath("/connexion", locale)}?next=${encodeURIComponent(
@@ -43,27 +87,22 @@ export default async function PreMarketPage() {
   return (
     <div className="container-page py-12 md:py-16">
       <header className="max-w-3xl">
-        <p className="text-xs font-bold tracking-[0.16em] text-accent uppercase">Pré-marché</p>
-        <h1 className="mt-3 font-display text-4xl leading-tight font-extrabold text-ink">
-          Des propriétés avant qu&apos;elles soient à vendre
-        </h1>
-        <p className="mt-4 text-lg text-ink-soft">
-          Un propriétaire qui prépare sa vente publie ici une fiche volontairement masquée : le nom de
-          la rue et la ville, jamais le numéro civique. Vous exprimez un intérêt, il vous répond.
-        </p>
+        <p className="text-xs font-bold tracking-[0.16em] text-accent uppercase">{t.eyebrow}</p>
+        <h1 className="mt-3 font-display text-4xl leading-tight font-extrabold text-ink">{t.title}</h1>
+        <p className="mt-4 text-lg text-ink-soft">{t.intro}</p>
       </header>
 
       {listings.length === 0 ? (
         <div className="mt-10">
           <EmptyState
             icon={<EmptyStateIllustration kind="no-listings" className="h-32 w-auto" />}
-            title="Aucune propriété en pré-marché pour l'instant"
-            description="Le pré-marché se remplit au fur et à mesure que des propriétaires publient leur projet de vente. Si vous possédez une propriété couverte, vous pouvez publier la vôtre gratuitement."
+            title={t.emptyTitle}
+            description={t.emptyBody}
             action={
               <div className="flex flex-wrap justify-center gap-3">
-                <ButtonLink href="/pre-marche/publier">Publier ma propriété</ButtonLink>
-                <ButtonLink href="/tester-le-marche" variant="secondary">
-                  Comprendre le pré-marché
+                <ButtonLink href={localePath("/pre-marche/publier", locale)}>{t.publish}</ButtonLink>
+                <ButtonLink href={localePath("/tester-le-marche", locale)} variant="secondary">
+                  {t.understand}
                 </ButtonLink>
               </div>
             }
@@ -87,7 +126,7 @@ export default async function PreMarketPage() {
                       <p className="text-sm text-muted-fg">{listing.city}</p>
                     </div>
                     <div className="flex flex-col items-end gap-2">
-                      <Badge tone="primary">{HORIZON_LABEL[listing.horizon] ?? listing.horizon}</Badge>
+                      <Badge tone="primary">{t.horizon[listing.horizon as keyof typeof t.horizon] ?? listing.horizon}</Badge>
                       <SaveListingButton
                         listingId={listing.id}
                         listingLabel={listing.street}
@@ -120,7 +159,7 @@ export default async function PreMarketPage() {
                   <p className="mt-3 line-clamp-3 text-sm text-ink-soft">{listing.description}</p>
                   <div className="mt-auto pt-5">
                     <ButtonLink href={`/pre-marche/${listing.id}`} variant="secondary" size="sm">
-                      Voir la fiche et exprimer un intérêt
+                      {t.see}
                     </ButtonLink>
                   </div>
                 </CardBody>
@@ -133,14 +172,11 @@ export default async function PreMarketPage() {
       <section className="mt-14 rounded-card border border-border bg-surface p-6 md:p-8">
         <div className="grid gap-6 md:grid-cols-[1.4fr_1fr] md:items-center">
           <div>
-            <h2 className="font-display text-2xl font-bold text-ink">Vous vendez bientôt?</h2>
-            <p className="mt-2 text-ink-soft">
-              Publier une fiche de pré-marché ne vous engage à rien et ne rend pas votre adresse
-              publique. Vous décidez à qui vous répondez.
-            </p>
+            <h2 className="font-display text-2xl font-bold text-ink">{t.ctaTitle}</h2>
+            <p className="mt-2 text-ink-soft">{t.ctaBody}</p>
           </div>
           <div className="flex flex-wrap gap-3 md:justify-end">
-            <ButtonLink href="/pre-marche/publier">Publier en pré-marché</ButtonLink>
+            <ButtonLink href={localePath("/pre-marche/publier", locale)}>{t.ctaButton}</ButtonLink>
           </div>
         </div>
       </section>

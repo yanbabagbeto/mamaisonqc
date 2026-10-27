@@ -534,7 +534,7 @@ export const getRegion = cache(async (param: string): Promise<RegionDetail | nul
       unitCount: units.length,
       medianRollValueCents: median(units.map((unit) => unit.valueTotalCents)),
       medianLandAreaM2: median(finiteNumbers(units.map((unit) => unit.landAreaM2))),
-      rollYear: rollYears.length > 0 ? Math.max(...rollYears) : null,
+      rollYear: rollYears.length > 0 ? rollYears.reduce((max, year) => (year > max ? year : max), rollYears[0]!) : null,
     },
   };
 });
@@ -621,7 +621,7 @@ export const getMunicipality = cache(
       },
       roll: {
         unitCount: units.length,
-        rollYear: rollYears.length > 0 ? Math.max(...rollYears) : null,
+        rollYear: rollYears.length > 0 ? rollYears.reduce((max, year) => (year > max ? year : max), rollYears[0]!) : null,
         medianValueCents: median(units.map((unit) => unit.valueTotalCents)),
         medianLandAreaM2: median(finiteNumbers(units.map((unit) => unit.landAreaM2))),
         byType: summarizeUnitsByType(
