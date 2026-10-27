@@ -5,10 +5,27 @@ import { useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/field";
+import {
+  claimStatusLabel,
+  fillClaim,
+  type ClaimsMessages,
+} from "@/modules/claims/messages";
 
-export function ClaimForm({ defaultMatricule }: { defaultMatricule?: string }) {
+/**
+ * Claim request form. Every string comes from the dictionary; the duplicate case is not a success
+ * banner and shows a localized status instead of the raw database value.
+ */
+export function ClaimForm({
+  defaultMatricule,
+  labels,
+}: {
+  defaultMatricule?: string;
+  labels: ClaimsMessages["page"]["form"] & { status: ClaimsMessages["page"]["status"] };
+}) {
   const router = useRouter();
-  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "exists" | "error">(
+    "idle",
+  );
   const [message, setMessage] = useState("");
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -30,50 +47,53 @@ export function ClaimForm({ defaultMatricule }: { defaultMatricule?: string }) {
         | { ok: false; error: { message: string } };
       if (!response.ok || !body.ok) {
         setStatus("error");
-        setMessage(body.ok ? "Demande impossible." : body.error.message);
+        setMessage(body.ok ? labels.errorGeneric : body.error.message);
         return;
       }
-      setStatus("success");
-      setMessage(
-        body.data.created
-          ? "Demande enregistrée. Un administrateur la validera; vous verrez son état dans votre tableau de bord."
-          : `Une demande existe déjà pour cette propriété (état : ${body.data.status}).`,
-      );
+      if (body.data.created) {
+        setStatus("success");
+        setMessage(labels.created);
+      } else {
+        setStatus("exists");
+        setMessage(
+          fillClaim(labels.existing, {
+            status: claimStatusLabel(labels.status, body.data.status),
+          }),
+        );
+      }
       router.refresh();
     } catch {
       setStatus("error");
-      setMessage("Réseau indisponible. Réessayez dans un instant.");
+      setMessage(labels.errorNetwork);
     }
   }
 
   return (
     <form onSubmit={onSubmit} className="space-y-5" noValidate>
-      <Field
-        label="Matricule de la propriété"
-        htmlFor="claim-matricule"
-        hint="Le matricule figure sur la fiche d'évaluation (bouton « Réclamer cette page »)."
-      >
+      <Field label={labels.matriculeLabel} htmlFor="claim-matricule" hint={labels.matriculeHint}>
         <Input
           id="claim-matricule"
           name="matricule"
           required
           defaultValue={defaultMatricule}
-          placeholder="ex. 1234567"
+          placeholder="ex. 319344091610000000"
         />
       </Field>
-      <Field
-        label="Comment savons-nous que c'est la vôtre? (facultatif)"
-        htmlFor="claim-evidence"
-        hint="Numéro de matricule du compte de taxes, nom au rôle, ou tout élément vérifiable. 600 caractères max."
-      >
+      <Field label={labels.evidenceLabel} htmlFor="claim-evidence" hint={labels.evidenceHint}>
         <Textarea id="claim-evidence" name="evidence" maxLength={600} />
       </Field>
       <Button type="submit" disabled={status === "submitting"}>
-        {status === "submitting" ? "Envoi…" : "Envoyer la demande"}
+        {status === "submitting" ? labels.submitting : labels.submit}
       </Button>
       <p
         aria-live="polite"
-        className={status === "error" ? "text-sm font-medium text-danger" : "text-sm text-success"}
+        className={
+          status === "error"
+            ? "text-sm font-medium text-danger"
+            : status === "exists"
+              ? "text-sm font-medium text-warning"
+              : "text-sm text-success"
+        }
       >
         {message}
       </p>

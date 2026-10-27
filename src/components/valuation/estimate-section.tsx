@@ -4,7 +4,7 @@ import { type Locale } from "@/i18n/config";
 import { MIN_COMPARABLES_FOR_ESTIMATE } from "@/modules/valuation/estimate";
 import type { EvaluationMessages } from "@/modules/valuation/messages";
 import type { ValuationResult } from "@/modules/valuation/types";
-import { formatCad, formatNumber } from "@/shared/format";
+import { formatCad, formatDateFr, formatNumber } from "@/shared/format";
 
 import { ConfidenceBadge } from "./confidence-badge";
 
@@ -64,10 +64,13 @@ export function EstimateSection({
   valuation,
   messages,
   locale,
+  rollReferenceDate,
 }: {
   valuation: ValuationResult;
   messages: EvaluationMessages;
   locale: Locale;
+  /** Roll reference date, so the headline figure is framed as assessment-based, not a sale price. */
+  rollReferenceDate?: string | null;
 }) {
   const sufficient = valuation.estimateAvailable;
 
@@ -99,6 +102,11 @@ export function EstimateSection({
                 hint={messages.estimate.comparablesCountHint}
               />
             </dl>
+
+            <p className="rounded-lg bg-muted px-3 py-2 text-xs leading-relaxed text-muted-fg">
+              {messages.estimate.basisNote}
+              {rollReferenceDate ? ` ${messages.estimate.rollBasis(formatDateFr(rollReferenceDate, locale))}` : ""}
+            </p>
 
             <div className="flex flex-wrap items-center gap-3">
               <ConfidenceBadge

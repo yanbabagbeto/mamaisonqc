@@ -18,10 +18,40 @@ import { messagesFor } from "./messages";
  * lenders apply their own ratios, stress tests, fees and credit checks (stated in the UI).
  */
 export const TDS_BP = 4_000;
+/** Canada's B-20 stress test: qualify at the greater of the contract rate + 2 % and 5,25 %. */
+export const STRESS_FLOOR_BP = 525;
+export const STRESS_ADD_BP = 200;
+/** Minimum down payment: 5 % of the first 500 000 $, 10 % above. */
+const MIN_DOWN_THRESHOLD_CENTS = 50_000_000;
+const MIN_DOWN_LOW_BP = 500;
+const MIN_DOWN_HIGH_BP = 1_000;
+
+export function qualifyingRateBp(contractRateBp: number, applyStressTest: boolean): number {
+  if (!applyStressTest) return contractRateBp;
+  return Math.max(contractRateBp + STRESS_ADD_BP, STRESS_FLOOR_BP, contractRateBp);
+}
+
+export function minimumDownPaymentCents(priceCents: number): number {
+  const low = Math.min(priceCents, MIN_DOWN_THRESHOLD_CENTS);
+  const high = Math.max(0, priceCents - MIN_DOWN_THRESHOLD_CENTS);
+  return Math.round((low * MIN_DOWN_LOW_BP) / 10_000) + Math.round((high * MIN_DOWN_HIGH_BP) / 10_000);
+}
+
+/** Largest purchase price allowed by a down payment, under the federal minimum-down rule. */
+export function maxPurchaseByDownPaymentCents(downPaymentCents: number): number {
+  const downAtThreshold = minimumDownPaymentCents(MIN_DOWN_THRESHOLD_CENTS);
+  if (downPaymentCents <= downAtThreshold) {
+    return Math.floor((downPaymentCents * 10_000) / MIN_DOWN_LOW_BP);
+  }
+  return (
+    MIN_DOWN_THRESHOLD_CENTS +
+    Math.floor(((downPaymentCents - downAtThreshold) * 10_000) / MIN_DOWN_HIGH_BP)
+  );
+}
 export const MIN_AMORTIZATION_MONTHS = 60;
 export const MAX_AMORTIZATION_MONTHS = 600;
 
-export type BudgetField = "income" | "debts" | "downPayment" | "rate" | "years";
+export type BudgetField = "income" | "debts" | "downPayment" | "rate" | "years" | "stressTest";
 
 export type BudgetValues = Record<BudgetField, string>;
 
@@ -38,6 +68,13 @@ export type BudgetComputation = {
   rateBp: number;
   amortizationMonths: number;
   tdsBp: number;
+  /** Rate used to qualify the loan: the contract rate, or the B-20 stress rate. */
+  qualifyingRateBp: number;
+  stressTestApplied: boolean;
+  /** Largest purchase under the minimum-down-payment rule. */
+  maxPurchaseByDownCents: number;
+  /** True when the down payment caps the purchase below what the income would allow. */
+  downPaymentLimited: boolean;
   /** True when monthly debts alone consume the entire 40 % envelope. */
   debtLimited: boolean;
 };
@@ -69,7 +106,9 @@ export function loanFromPaymentCents({
     throw new RangeError("annualRateBp must be between 0 and 2500");
   }
   if (paymentCents === 0) return 0;
-  const rate = annualRateBp / 120_000;
+  // Canadian fixed-rate convention: nominal rate compounded semi-annually.
+  const annual = annualRateBp / 10_000;
+  const rate = annual === 0 ? 0 : Math.pow(1 + annual / 2, 1 / 6) - 1;
   if (rate === 0) return paymentCents * months;
   const factor = Math.pow(1 + rate, -months);
   return Math.round((paymentCents * (1 - factor)) / rate);
@@ -81,27 +120,39 @@ export function computeBudget(input: {
   downPaymentCents: number;
   rateBp: number;
   amortizationMonths: number;
+  applyStressTest?: boolean;
 }): BudgetComputation {
   const grossMonthlyIncomeCents = Math.round(input.annualIncomeCents / 12);
   const monthlyHousingCents = Math.max(
     0,
     Math.round((grossMonthlyIncomeCents * TDS_BP) / 10_000) - input.monthlyDebtsCents,
   );
+  const stressTestApplied = input.applyStressTest === true;
+  const qualifyingBp = qualifyingRateBp(input.rateBp, stressTestApplied);
+  // Capacity is computed at the qualifying rate: with the stress test on, this is what a lender
+  // would actually test, not the friendly contract rate.
   const maxLoanCents = loanFromPaymentCents({
     paymentCents: monthlyHousingCents,
-    annualRateBp: input.rateBp,
+    annualRateBp: qualifyingBp,
     months: input.amortizationMonths,
   });
+  const maxPurchaseByDownCents = maxPurchaseByDownPaymentCents(input.downPaymentCents);
+  const rawPurchase = maxLoanCents + input.downPaymentCents;
+  const maxPurchaseCents = Math.min(rawPurchase, maxPurchaseByDownCents);
   return {
     grossMonthlyIncomeCents,
     monthlyDebtsCents: input.monthlyDebtsCents,
     monthlyHousingCents,
     maxLoanCents,
-    maxPurchaseCents: maxLoanCents + input.downPaymentCents,
+    maxPurchaseCents,
     downPaymentCents: input.downPaymentCents,
     rateBp: input.rateBp,
     amortizationMonths: input.amortizationMonths,
     tdsBp: TDS_BP,
+    qualifyingRateBp: qualifyingBp,
+    stressTestApplied,
+    maxPurchaseByDownCents,
+    downPaymentLimited: maxPurchaseByDownCents < rawPurchase,
     debtLimited: monthlyHousingCents === 0 && input.monthlyDebtsCents > 0,
   };
 }
@@ -124,6 +175,7 @@ export function parseBudget(
     downPayment: asString(raw.downPayment).trim(),
     rate: asString(raw.rate).trim(),
     years: asString(raw.years).trim(),
+    stressTest: raw.stressTest === true || raw.stressTest === "1" || raw.stressTest === "on" ? "1" : "",
   };
   const errors: BudgetFieldErrors = {};
 
@@ -178,6 +230,7 @@ export function parseBudget(
       downPaymentCents: down.value,
       rateBp: rate.value,
       amortizationMonths: months.value,
+      applyStressTest: raw.stressTest === true || raw.stressTest === "1" || raw.stressTest === "on",
     }),
   };
 }
@@ -196,5 +249,6 @@ export function budgetValuesToInputs(input: {
     downPayment: centsToInputValue(input.downPaymentCents),
     rate: bpToInputValue(input.rateBp),
     years: String(Math.round(input.amortizationMonths / 12)),
+    stressTest: "",
   };
 }

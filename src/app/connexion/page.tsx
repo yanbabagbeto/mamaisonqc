@@ -5,9 +5,9 @@ import { redirect } from "next/navigation";
 import { AuthAside } from "@/components/owner/auth-aside";
 import { SignInForm } from "@/components/owner/sign-in-form";
 import { Card, CardBody } from "@/components/ui/card";
-import { Alert } from "@/components/ui/content";
 import { localePath, stripLocale, type Locale } from "@/i18n/config";
 import { getLocale } from "@/i18n/server";
+import { StripQueryParam } from "@/components/layout/strip-query-param";
 import { getCurrentUser } from "@/lib/auth";
 import { safeNextPath } from "@/modules/owner/auth-schema";
 import { initialSignInState } from "@/modules/owner/auth-state";
@@ -52,6 +52,8 @@ export default async function ConnexionPage({
   }
 
   return (
+    <>
+      <StripQueryParam param="deconnexion" />
     <div className="container-page max-w-6xl py-10 md:py-16">
       <div className="grid gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:items-start">
         <div className="mx-auto w-full max-w-xl lg:mx-0">
@@ -65,17 +67,16 @@ export default async function ConnexionPage({
 
           <Card className="mt-8 shadow-[var(--shadow-card)]">
             <CardBody className="space-y-5 p-6 md:p-7">
-              {justSignedOut ? (
-                <Alert tone="success" title={m.auth.signIn.signedOutTitle}>
-                  {m.auth.signIn.signedOutBody}
-                </Alert>
-              ) : null}
-
               <SignInForm
                 initialState={initialSignInState()}
                 labels={m.auth.signIn}
                 signUpHref={path("/inscription")}
                 next={next}
+                signedOutNotice={
+                  justSignedOut
+                    ? { title: m.auth.signIn.signedOutTitle, body: m.auth.signIn.signedOutBody }
+                    : null
+                }
               />
 
               <p className="border-t border-border pt-4 text-xs leading-relaxed text-muted-fg">
@@ -101,5 +102,6 @@ export default async function ConnexionPage({
         />
       </div>
     </div>
+    </>
   );
 }

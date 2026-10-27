@@ -99,6 +99,8 @@ export function findComparablesWithTier(
   for (const record of pool) {
     if (record.id === subject.id) continue;
     if (!(record.valueTotalCents > 0)) continue;
+    // A plex is not a comparable for a single-family home: the use class must match exactly.
+    if (record.propertyType !== subject.propertyType) continue;
     if (!unique.has(record.id)) unique.set(record.id, record);
   }
   const eligible = [...unique.values()];

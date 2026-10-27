@@ -43,7 +43,7 @@ export const fr = {
         "Retrouvez les propriétés en pré-marché que vous avez sauvegardées et les intérêts que vous avez exprimés, dans votre session.",
     },
     settings: {
-      title: "Paramètres du compte acheteur",
+      title: "Paramètres du compte",
       description:
         "Profil, préférences de notification, langue et demande de suppression de compte pour votre compte MaMaisonQC.",
     },
@@ -76,6 +76,7 @@ export const fr = {
     resultsCountOne: "{count} propriété en pré-marché",
     resultsCountMany: "{count} propriétés en pré-marché",
     emptyTitle: "Aucune propriété en pré-marché pour ces filtres",
+    emptyTitleNoFilters: "Aucune propriété en pré-marché pour l'instant",
     emptyBody:
       "Le pré-marché se remplit au fur et à mesure que des propriétaires publient leur projet de vente. Élargissez les filtres ou revenez plus tard.",
     emptyCta: "Voir tout le pré-marché",
@@ -172,6 +173,14 @@ export const fr = {
       emptyBody:
         "Le résultat apparaîtra ici : capacité d'emprunt, budget d'achat et paiement mensuel maximal.",
       notPreApproval: "Estimation indicative — pas une préapprobation",
+      stressLabel: "Test de résistance (taux +2 %, minimum 5,25 %)",
+      stressHint:
+        "Le prêt est qualifié au taux le plus élevé entre votre taux + 2 % et 5,25 %, comme le font les prêteurs canadiens.",
+      qualifyingRateLabel: "Taux de qualification",
+      downLimited:
+        "Votre mise de fonds limite l'achat à {budget}. La mise minimale pour ce prix est de {minDown} (5 % jusqu'à 500 000 $, 10 % au-delà).",
+      stressApplied: "Test de résistance appliqué",
+      stressNotApplied: "Sans test de résistance",
     },
     checklist: {
       title: "Mes documents de préapprobation",
@@ -281,7 +290,7 @@ export const fr = {
   },
   settings: {
     eyebrow: "Paramètres",
-    title: "Votre compte acheteur",
+    title: "Votre compte",
     intro:
       "Votre profil, vos notifications et la langue de l'interface. Les données liées à votre compte restent dans votre session.",
     profileTitle: "Profil",
@@ -364,7 +373,7 @@ export const en: BuyerMessages = {
         "Find the pre-market properties you saved and the interests you expressed, inside your session.",
     },
     settings: {
-      title: "Buyer account settings",
+      title: "Account settings",
       description:
         "Profile, notification preferences, language and account deletion request for your MaMaisonQC account.",
     },
@@ -397,6 +406,7 @@ export const en: BuyerMessages = {
     resultsCountOne: "{count} pre-market property",
     resultsCountMany: "{count} pre-market properties",
     emptyTitle: "No pre-market property matches these filters",
+    emptyTitleNoFilters: "No pre-market property yet",
     emptyBody:
       "The pre-market fills up as owners publish their sale projects. Widen the filters or come back later.",
     emptyCta: "See the whole pre-market",
@@ -493,6 +503,14 @@ export const en: BuyerMessages = {
       emptyBody:
         "The result will appear here: borrowing capacity, purchase budget and maximum monthly payment.",
       notPreApproval: "Indicative estimate — not a pre-approval",
+      stressLabel: "Stress test (rate +2%, minimum 5.25%)",
+      stressHint:
+        "The loan is qualified at the higher of your rate + 2% and 5.25%, as Canadian lenders do.",
+      qualifyingRateLabel: "Qualifying rate",
+      downLimited:
+        "Your down payment caps the purchase at {budget}. The minimum down payment for that price is {minDown} (5% up to $500,000, 10% above).",
+      stressApplied: "Stress test applied",
+      stressNotApplied: "No stress test",
     },
     checklist: {
       title: "My pre-approval documents",
@@ -601,7 +619,7 @@ export const en: BuyerMessages = {
   },
   settings: {
     eyebrow: "Settings",
-    title: "Your buyer account",
+    title: "Your account",
     intro:
       "Your profile, notifications and interface language. Account data stays inside your session.",
     profileTitle: "Profile",

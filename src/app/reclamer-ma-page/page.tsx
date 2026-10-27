@@ -5,52 +5,67 @@ import { ClaimForm } from "@/components/claims/claim-form";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { Alert } from "@/components/ui/content";
+import { localePath } from "@/i18n/config";
+import { getLocale } from "@/i18n/server";
 import { getCurrentUser } from "@/lib/auth";
+import { claimsMessagesFor, fillClaim, claimStatusLabel } from "@/modules/claims/messages";
 import { listClaimsFor } from "@/modules/claims";
 import { formatDateFr } from "@/shared/format";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Réclamer la page de ma propriété",
-  description:
-    "Prenez possession de la page d'évaluation de votre propriété : suivez son marché, publiez en pré-marché et accédez à vos outils propriétaire.",
-  alternates: { canonical: "/reclamer-ma-page" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const m = claimsMessagesFor(locale);
+  return {
+    title: m.meta.title,
+    description: m.meta.description,
+    alternates: {
+      canonical: localePath("/reclamer-ma-page", locale),
+      languages: { "fr-CA": "/reclamer-ma-page", "en-CA": "/en/reclamer-ma-page" },
+    },
+  };
+}
 
 type Props = { searchParams: Promise<{ matricule?: string }> };
 
-const STATUS_LABEL: Record<string, string> = {
-  pending: "En attente de validation",
-  approved: "Approuvée",
-  rejected: "Refusée",
-};
-
 export default async function ClaimPage({ searchParams }: Props) {
-  const { matricule } = await searchParams;
+  const [locale, params] = await Promise.all([getLocale(), searchParams]);
+  const m = claimsMessagesFor(locale);
+  const path = (href: string) => localePath(href, locale);
+  const { matricule } = params;
   const current = await getCurrentUser();
   const claims = current ? await listClaimsFor(current.id) : [];
 
   return (
     <div className="container-page max-w-3xl py-12 md:py-16">
-      <p className="text-xs font-bold tracking-[0.16em] text-accent uppercase">Propriétaire</p>
+      <p className="text-xs font-bold tracking-[0.16em] text-accent uppercase">{m.page.eyebrow}</p>
       <h1 className="mt-3 font-display text-3xl leading-tight font-extrabold text-ink md:text-4xl">
-        Prenez possession de votre page
+        {m.page.title}
       </h1>
-      <p className="mt-3 text-ink-soft">
-        La fiche publique d&apos;une propriété existe déjà, comme le rôle d&apos;évaluation dont elle
-        provient. En la réclamant, vous ajoutez vos outils : équité, pré-marché, suivi des intérêts.
-      </p>
+      <p className="mt-3 text-ink-soft">{m.page.intro}</p>
+
+      <section className="mt-6 rounded-card border border-border bg-surface p-5">
+        <h2 className="font-display text-lg font-bold text-ink">{m.page.stepsTitle}</h2>
+        <ol className="mt-3 space-y-2 text-sm text-ink-soft">
+          {m.page.steps.map((step, index) => (
+            <li key={step} className="flex gap-2">
+              <span className="font-display font-bold text-primary">{index + 1}.</span>
+              <span>{step}</span>
+            </li>
+          ))}
+        </ol>
+        <Link href={path("/recherche")} className="mt-4 inline-flex text-sm font-semibold text-primary">
+          {m.page.searchCta} →
+        </Link>
+      </section>
 
       <div className="mt-8 space-y-6">
         {!current ? (
           <Card>
             <CardBody className="space-y-4">
-              <h2 className="font-display text-xl font-bold text-ink">Créez votre compte d&apos;abord</h2>
-              <p className="text-ink-soft">
-                Pour réclamer une page, il faut un compte — c&apos;est ce qui empêche quelqu&apos;un
-                d&apos;autre de publier en votre nom. Créez-le en 30 secondes.
-              </p>
+              <h2 className="font-display text-xl font-bold text-ink">{m.page.createTitle}</h2>
+              <p className="text-ink-soft">{m.page.createBody}</p>
               <div className="flex flex-wrap gap-3">
                 <ButtonLink
                   href={
@@ -59,13 +74,13 @@ export default async function ClaimPage({ searchParams }: Props) {
                       : "/inscription"
                   }
                 >
-                  Créer mon compte
+                  {m.page.createCta}
                 </ButtonLink>
                 <ButtonLink
                   href={matricule ? `/connexion?next=/reclamer-ma-page` : "/connexion"}
                   variant="secondary"
                 >
-                  J&apos;ai déjà un compte
+                  {m.page.loginCta}
                 </ButtonLink>
               </div>
             </CardBody>
@@ -74,27 +89,29 @@ export default async function ClaimPage({ searchParams }: Props) {
           <>
             <Card>
               <CardBody>
-                <h2 className="font-display text-xl font-bold text-ink">Nouvelle demande</h2>
+                <h2 className="font-display text-xl font-bold text-ink">{m.page.newRequestTitle}</h2>
                 <p className="mt-2 text-sm text-ink-soft">
-                  Connecté en tant que {current.name} ({current.email}).
+                  {fillClaim(m.page.signedInAs, { name: current.name, email: current.email })}
                 </p>
                 <div className="mt-5">
-                  <ClaimForm defaultMatricule={matricule} />
+                  <ClaimForm
+                    defaultMatricule={matricule}
+                    labels={{ ...m.page.form, status: m.page.status }}
+                  />
                 </div>
               </CardBody>
             </Card>
 
             <section aria-labelledby="mes-demandes">
               <h2 id="mes-demandes" className="font-display text-xl font-bold text-ink">
-                Mes demandes
+                {m.page.myRequestsTitle}
               </h2>
               {claims.length === 0 ? (
                 <p className="mt-3 text-sm text-ink-soft">
-                  Aucune demande pour l&apos;instant.{" "}
-                  <Link href="/marche-immobilier" className="underline underline-offset-2">
-                    Trouvez votre propriété
-                  </Link>{" "}
-                  pour obtenir son matricule.
+                  {m.page.noRequests}{" "}
+                  <Link href={path("/recherche")} className="underline underline-offset-2">
+                    {m.page.findProperty}
+                  </Link>
                 </p>
               ) : (
                 <ul className="mt-3 space-y-2">
@@ -108,11 +125,11 @@ export default async function ClaimPage({ searchParams }: Props) {
                           {claim.address ?? claim.matricule}
                         </p>
                         <p className="text-xs text-muted-fg">
-                          Demande du {formatDateFr(claim.createdAt)}
+                          {fillClaim(m.page.requestedOn, { date: formatDateFr(claim.createdAt, locale) })}
                         </p>
                       </div>
                       <span className="text-xs font-semibold text-ink-soft">
-                        {STATUS_LABEL[claim.status] ?? claim.status}
+                        {claimStatusLabel(m.page.status, claim.status)}
                       </span>
                     </li>
                   ))}
@@ -122,10 +139,7 @@ export default async function ClaimPage({ searchParams }: Props) {
           </>
         )}
 
-        <Alert tone="neutral">
-          Vos informations personnelles ne sont pas publiées. Une demande approuvée vous donne accès
-          aux outils propriétaire de cette fiche — pas à la propriété du terrain.
-        </Alert>
+        <Alert tone="neutral">{m.page.privacy}</Alert>
       </div>
     </div>
   );

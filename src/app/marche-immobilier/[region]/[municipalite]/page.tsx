@@ -67,7 +67,10 @@ export async function generateMetadata({
     return { title: m.notFound.title, robots: { index: false, follow: false } };
   }
   const base = `/marche-immobilier/${resolved.region.slug}/${resolved.municipality.slug}`;
-  const canonical = active ? `${base}?type=${active}` : base;
+  // `?type=` is a view of the same record: keep the clean canonical, but do not index the variants.
+  const filteredView = active !== null;
+  // Filtered views keep the clean canonical URL and are not indexed as separate documents.
+  const canonical = base;
   return {
     title: m.municipality.meta.title(resolved.municipality.name),
     description: m.municipality.meta.description(
@@ -78,6 +81,7 @@ export async function generateMetadata({
       canonical: localePath(canonical, locale),
       languages: { "fr-CA": canonical, "en-CA": `/en${canonical}` },
     },
+    robots: filteredView ? { index: false, follow: true } : { index: true, follow: true },
   };
 }
 

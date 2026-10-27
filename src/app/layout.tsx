@@ -53,7 +53,9 @@ export async function generateMetadata(): Promise<Metadata> {
       locale: isEn ? "en_CA" : "fr_CA",
       siteName: t.meta.siteName,
       title: t.meta.tagline,
-      description: t.meta.tagline,
+      description: isEn
+        ? "Official Quebec open data, a computed range and the source of every figure — free, no account."
+        : "Données ouvertes officielles du Québec, une fourchette calculée et la source de chaque chiffre — gratuit, sans compte.",
     },
     robots: { index: true, follow: true },
   };

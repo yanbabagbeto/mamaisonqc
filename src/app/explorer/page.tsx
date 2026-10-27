@@ -147,7 +147,9 @@ export default async function ExplorerPage({ searchParams }: ExplorerPageProps) 
       {filtered.length === 0 ? (
         <div className="mt-6">
           <EmptyState
-            title={messages.explorer.emptyTitle}
+            title={
+              hasFilters ? messages.explorer.emptyTitle : messages.explorer.emptyTitleNoFilters
+            }
             description={messages.explorer.emptyBody}
             action={
               <div className="flex flex-wrap justify-center gap-3">

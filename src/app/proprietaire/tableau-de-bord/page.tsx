@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { StripQueryParam } from "@/components/layout/strip-query-param";
 import { redirect } from "next/navigation";
 
 import { signOutAction } from "@/app/deconnexion/actions";
@@ -96,6 +97,8 @@ export default async function DashboardPage({
   const totalInterests = listings.reduce((sum, listing) => sum + listing.interestCount, 0);
 
   return (
+    <>
+      <StripQueryParam param="bienvenue" />
     <div className="container-page py-10 md:py-14">
       <nav aria-label={m.common.breadcrumb} className="text-sm text-muted-fg">
         <ol className="flex flex-wrap items-center gap-2">
@@ -337,5 +340,6 @@ export default async function DashboardPage({
         </Card>
       </div>
     </div>
+    </>
   );
 }

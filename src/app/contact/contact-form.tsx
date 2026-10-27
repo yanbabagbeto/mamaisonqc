@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox, Field, Input, Textarea } from "@/components/ui/field";
@@ -25,21 +25,37 @@ export type ContactFormLabels = {
   errorTitle: string;
   errorBody: string;
   invalid: string;
+  nameInvalid: string;
+  emailInvalid: string;
+  messageInvalid: string;
+  consentRequired: string;
   network: string;
   rateLimited: string;
 };
 
 type Status = "idle" | "submitting" | "success" | "error";
+type FieldName = "name" | "email" | "message" | "consent";
+type FieldErrors = Partial<Record<FieldName, string>>;
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * Posts to `/api/contact` (Lead-owned route): `{ name, email, message }` → `{ ok, data|error }`.
- * No email address is invented: the form is the official channel. Validation is repeated on the
- * server; this component only gives immediate feedback.
+ * Posts to `/api/contact`. Validation is repeated server-side; here it exists to give per-field
+ * errors, move focus to the first invalid control and never leave the visitor with one generic
+ * message (reported in review).
  */
 export function ContactForm({ labels }: { labels: ContactFormLabels }) {
   const [status, setStatus] = useState<Status>("idle");
-  const [message, setMessage] = useState("");
-  const [title, setTitle] = useState("");
+  const [notice, setNotice] = useState<{ title: string; body: string } | null>(null);
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const formRef = useRef<HTMLFormElement>(null);
+
+  function focusFirstInvalid(fieldErrors: FieldErrors): void {
+    const order: FieldName[] = ["name", "email", "message", "consent"];
+    const first = order.find((field) => fieldErrors[field]);
+    if (!first) return;
+    formRef.current?.querySelector<HTMLElement>(`#contact-${first}`)?.focus();
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -50,16 +66,23 @@ export function ContactForm({ labels }: { labels: ContactFormLabels }) {
     const body = String(data.get("message") ?? "").trim();
     const consent = data.get("consent");
 
-    if (!consent || name.length < 2 || !email || body.length < 10) {
+    const fieldErrors: FieldErrors = {};
+    if (name.length < 2) fieldErrors.name = labels.nameInvalid;
+    if (!EMAIL_RE.test(email)) fieldErrors.email = labels.emailInvalid;
+    if (body.length < 10) fieldErrors.message = labels.messageInvalid;
+    if (!consent) fieldErrors.consent = labels.consentRequired;
+
+    if (Object.keys(fieldErrors).length > 0) {
+      setErrors(fieldErrors);
       setStatus("error");
-      setTitle(labels.errorTitle);
-      setMessage(labels.invalid);
+      setNotice({ title: labels.errorTitle, body: labels.invalid });
+      focusFirstInvalid(fieldErrors);
       return;
     }
 
+    setErrors({});
     setStatus("submitting");
-    setTitle("");
-    setMessage("");
+    setNotice(null);
 
     try {
       const response = await fetch("/api/contact", {
@@ -70,105 +93,116 @@ export function ContactForm({ labels }: { labels: ContactFormLabels }) {
 
       if (response.status === 429) {
         setStatus("error");
-        setTitle(labels.errorTitle);
-        setMessage(labels.rateLimited);
-        return;
-      }
-      if (response.status === 422) {
-        setStatus("error");
-        setTitle(labels.errorTitle);
-        setMessage(labels.invalid);
+        setNotice({ title: labels.errorTitle, body: labels.rateLimited });
         return;
       }
       if (!response.ok) {
         setStatus("error");
-        setTitle(labels.errorTitle);
-        setMessage(labels.errorBody);
+        setNotice({ title: labels.errorTitle, body: labels.errorBody });
         return;
       }
 
       form.reset();
       setStatus("success");
-      setTitle(labels.successTitle);
-      setMessage(labels.successBody);
+      setNotice({ title: labels.successTitle, body: labels.successBody });
+      document.getElementById("contact-status")?.focus();
     } catch {
       setStatus("error");
-      setTitle(labels.errorTitle);
-      setMessage(labels.network);
+      setNotice({ title: labels.errorTitle, body: labels.network });
     }
   }
 
   const submitting = status === "submitting";
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-5" aria-describedby="contact-status">
+    <form ref={formRef} onSubmit={onSubmit} noValidate className="space-y-5">
       <fieldset className="space-y-4" disabled={submitting}>
-        <legend className="font-display text-lg font-bold text-ink">{labels.legend}</legend>
+        {/* The card already renders this heading; the legend stays for assistive tech only. */}
+        <legend className="sr-only">{labels.legend}</legend>
 
-        <Field label={labels.name} htmlFor="contact-name" hint={labels.nameHint}>
+        <Field label={labels.name} htmlFor="contact-name" hint={labels.nameHint} error={errors.name}>
           <Input
             id="contact-name"
             name="name"
-            aria-describedby="contact-name-hint"
             autoComplete="name"
             required
             minLength={2}
             maxLength={80}
             placeholder={labels.namePlaceholder}
+            aria-invalid={errors.name ? true : undefined}
+            aria-describedby={errors.name ? "contact-name-error" : "contact-name-hint"}
           />
         </Field>
 
-        <Field label={labels.email} htmlFor="contact-email" hint={labels.emailHint}>
+        <Field label={labels.email} htmlFor="contact-email" hint={labels.emailHint} error={errors.email}>
           <Input
             id="contact-email"
             name="email"
-            aria-describedby="contact-email-hint"
             type="email"
             inputMode="email"
             autoComplete="email"
             required
             placeholder={labels.emailPlaceholder}
+            aria-invalid={errors.email ? true : undefined}
+            aria-describedby={errors.email ? "contact-email-error" : "contact-email-hint"}
           />
         </Field>
 
-        <Field label={labels.message} htmlFor="contact-message" hint={labels.messageHint}>
+        <Field
+          label={labels.message}
+          htmlFor="contact-message"
+          hint={labels.messageHint}
+          error={errors.message}
+        >
           <Textarea
             id="contact-message"
             name="message"
-            aria-describedby="contact-message-hint"
             required
             minLength={10}
             maxLength={1500}
             rows={6}
             placeholder={labels.messagePlaceholder}
+            aria-invalid={errors.message ? true : undefined}
+            aria-describedby={errors.message ? "contact-message-error" : "contact-message-hint"}
           />
         </Field>
 
-        <div className="flex items-start gap-3">
-          <Checkbox id="contact-consent" name="consent" required className="mt-0.5" />
-          <label htmlFor="contact-consent" className="text-sm leading-relaxed text-ink-soft">
-            {labels.consent}
+        <div className="space-y-1.5">
+          <label htmlFor="contact-consent" className="flex items-start gap-2.5 text-sm text-ink-soft">
+            <Checkbox
+              id="contact-consent"
+              name="consent"
+              required
+              aria-invalid={errors.consent ? true : undefined}
+              aria-describedby={errors.consent ? "contact-consent-error" : undefined}
+            />
+            <span>{labels.consent}</span>
           </label>
+          {errors.consent ? (
+            <p id="contact-consent-error" className="text-sm font-medium text-danger" role="alert">
+              {errors.consent}
+            </p>
+          ) : null}
         </div>
+
+        <Button type="submit" disabled={submitting}>
+          {submitting ? labels.submitting : labels.submit}
+        </Button>
       </fieldset>
 
-      <Button type="submit" size="md" disabled={submitting}>
-        {submitting ? labels.submitting : labels.submit}
-      </Button>
-
-      <div
-        id="contact-status"
-        aria-live="polite"
-        className={
-          status === "error"
-            ? "rounded-xl border border-danger/20 bg-[#fdeceb] px-4 py-3 text-sm text-danger"
-            : status === "success"
-              ? "rounded-xl border border-success/20 bg-[#e7f6ee] px-4 py-3 text-sm text-success"
-              : "sr-only"
-        }
-      >
-        {title ? <p className="font-semibold">{title}</p> : null}
-        {message ? <p className={title ? "mt-1" : undefined}>{message}</p> : null}
+      <div id="contact-status" tabIndex={-1} aria-live="polite" className="rounded-xl outline-none">
+        {notice ? (
+          <p
+            className={
+              status === "success"
+                ? "rounded-xl bg-[#e7f6ee] px-4 py-3 text-sm text-success"
+                : "rounded-xl bg-[#fdeceb] px-4 py-3 text-sm text-danger"
+            }
+          >
+            <span className="font-semibold">{notice.title}. </span>
+            {notice.body}
+          </p>
+        ) : null}
       </div>
     </form>
   );

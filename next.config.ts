@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["better-sqlite3"],
   // Do not advertise the framework in every response.
   poweredByHeader: false,
+  // Next would normalise `/faq//` itself, producing two redirects; the proxy handles it in one hop.
+  skipTrailingSlashRedirect: true,
   async headers() {
     const isProd = process.env.NODE_ENV === "production";
     const csp = [

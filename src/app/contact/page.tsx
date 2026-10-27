@@ -37,7 +37,6 @@ export default async function ContactPage() {
             {page.title}
           </h1>
           <p className="mt-4 text-lg leading-relaxed text-ink-soft">{page.description}</p>
-          <p className="mt-3 text-sm leading-relaxed text-muted-fg">{page.intro}</p>
         </div>
       </header>
 

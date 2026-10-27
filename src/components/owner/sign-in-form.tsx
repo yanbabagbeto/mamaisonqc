@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
 import { signInAction } from "@/app/connexion/actions";
 import { Button } from "@/components/ui/button";
@@ -16,23 +16,44 @@ export function SignInForm({
   labels,
   signUpHref,
   next,
+  signedOutNotice,
 }: {
   initialState: SignInState;
   labels: OwnerMessages["auth"]["signIn"];
   signUpHref: string;
   next?: string;
+  /** Shown only while the form has no error: after a failed attempt the two banners contradicted. */
+  signedOutNotice?: { title: string; body: string } | null;
 }) {
   const [state, formAction, pending] = useActionState(signInAction, initialState);
   const [email, setEmail] = useState(initialState.values.email);
+  const errorRef = useRef<HTMLDivElement>(null);
+
+  // The action re-renders this component; move focus to the error so it is not left off-screen
+  // (reported: the failure message was rendered above the visible area and focus fell to <body>).
+  useEffect(() => {
+    if (state.errors.form && errorRef.current) {
+      errorRef.current.focus();
+      errorRef.current.scrollIntoView({ block: "center" });
+    }
+  }, [state.errors.form]);
 
   return (
     <form action={formAction} noValidate className="space-y-5">
       {next ? <input type="hidden" name="next" value={next} readOnly /> : null}
 
-      {state.errors.form ? (
-        <Alert tone="danger" title={labels.formErrorTitle}>
-          {state.errors.form}
+      {!state.errors.form && signedOutNotice ? (
+        <Alert tone="success" title={signedOutNotice.title}>
+          {signedOutNotice.body}
         </Alert>
+      ) : null}
+
+      {state.errors.form ? (
+        <div ref={errorRef} tabIndex={-1} role="alert" className="rounded-xl outline-none">
+          <Alert tone="danger" title={labels.formErrorTitle}>
+            {state.errors.form}
+          </Alert>
+        </div>
       ) : null}
 
       <Field label={labels.emailLabel} htmlFor="signin-email" error={state.errors.email}>

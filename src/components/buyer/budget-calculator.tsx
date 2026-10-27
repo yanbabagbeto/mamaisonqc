@@ -5,9 +5,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, Badge, Stat } from "@/components/ui/content";
-import { Field, Input } from "@/components/ui/field";
+import { Checkbox, Field, Input } from "@/components/ui/field";
 import type { Locale } from "@/i18n/config";
 import {
+  minimumDownPaymentCents,
   parseBudget,
   type BudgetComputation,
   type BudgetFieldErrors,
@@ -23,6 +24,7 @@ const EMPTY_VALUES: BudgetValues = {
   downPayment: "",
   rate: "",
   years: "25",
+  stressTest: "",
 };
 
 /**
@@ -105,6 +107,19 @@ export function BudgetCalculator({
                 />
               </Field>
             ))}
+            <label htmlFor="budget-stressTest" className="flex items-start gap-2.5 text-sm text-ink-soft">
+              <Checkbox
+                id="budget-stressTest"
+                name="stressTest"
+                checked={values.stressTest === "1"}
+                onChange={(event) => update("stressTest", event.target.checked ? "1" : "")}
+              />
+              <span>
+                <span className="font-semibold text-ink">{t.stressLabel}</span>
+                <span className="mt-0.5 block text-xs text-muted-fg">{t.stressHint}</span>
+              </span>
+            </label>
+
             <div className="flex flex-wrap items-center gap-3">
               <Button type="submit">{t.submit}</Button>
               <Badge tone="warning">{t.notPreApproval}</Badge>
@@ -140,7 +155,20 @@ export function BudgetCalculator({
                   value={formatCad(result.grossMonthlyIncomeCents, locale)}
                 />
                 <Stat label={t.tdsLabel} value={t.tdsValue} hint={`${formatNumber(result.tdsBp / 100, locale)} %`} />
+                <Stat
+                  label={t.qualifyingRateLabel}
+                  value={`${formatNumber(result.qualifyingRateBp / 100, locale)} %`}
+                  hint={result.stressTestApplied ? t.stressApplied : t.stressNotApplied}
+                />
               </dl>
+              {result.downPaymentLimited ? (
+                <Alert tone="warning" title={t.budgetLabel}>
+                  {interpolate(t.downLimited, {
+                    budget: formatCad(result.maxPurchaseCents, locale),
+                    minDown: formatCad(minimumDownPaymentCents(result.maxPurchaseCents), locale),
+                  })}
+                </Alert>
+              ) : null}
               {result.debtLimited ? (
                 <Alert tone="warning" title={t.loanLabel}>
                   {interpolate(t.debtLimited, {

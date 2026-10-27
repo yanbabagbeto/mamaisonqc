@@ -120,9 +120,7 @@ export default async function EvaluationPage({ params }: EvaluationPageProps) {
               <h1 className="mt-4 font-display text-3xl leading-tight font-extrabold tracking-tight text-ink sm:text-4xl md:text-[2.75rem]">
                 {address}
               </h1>
-              <p className="mt-2 text-lg text-ink-soft">
-                {messages.header.locationLine(place, unit.matricule)}
-              </p>
+              <p className="mt-2 text-lg text-ink-soft">{place}</p>
             </div>
             <div className="flex flex-wrap gap-3">
               <ButtonLink href={equityHref(unit.matricule, locale)}>
@@ -183,7 +181,12 @@ export default async function EvaluationPage({ params }: EvaluationPageProps) {
             </Card>
           </section>
 
-          <EstimateSection valuation={valuation} messages={messages} locale={locale} />
+          <EstimateSection
+            valuation={valuation}
+            messages={messages}
+            locale={locale}
+            rollReferenceDate={unit.marketRefDate}
+          />
 
           <section aria-labelledby="comparables">
             <div className="flex flex-wrap items-end justify-between gap-3">

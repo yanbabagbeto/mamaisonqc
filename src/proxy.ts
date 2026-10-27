@@ -24,6 +24,15 @@ const PROTECTED_PREFIXES = [
 export function proxy(request: NextRequest): NextResponse {
   const { pathname, search } = request.nextUrl;
 
+  // `/faq//` used to redirect twice (// -> / then / -> bare). Collapse in a single hop.
+  const normalised = pathname.replace(/\/{2,}/g, "/").replace(/(.)\/$/, "$1");
+  if (normalised !== pathname) {
+    const target = request.nextUrl.clone();
+    target.pathname = normalised === "" ? "/" : normalised;
+    target.search = search;
+    return NextResponse.redirect(target, 308);
+  }
+
   const english = pathname === "/en" || pathname.startsWith("/en/");
   const barePath = english ? pathname.replace(/^\/en/, "") || "/" : pathname;
   const isProtected = PROTECTED_PREFIXES.some(

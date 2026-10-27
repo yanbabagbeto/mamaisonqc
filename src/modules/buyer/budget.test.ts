@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { computeBudget, loanFromPaymentCents, parseBudget, TDS_BP } from "./budget";
+import {
+  computeBudget,
+  loanFromPaymentCents,
+  maxPurchaseByDownPaymentCents,
+  minimumDownPaymentCents,
+  parseBudget,
+  qualifyingRateBp,
+  TDS_BP,
+} from "./budget";
 
 const base = {
   annualIncomeCents: 12_000_000,
@@ -62,13 +70,20 @@ describe("computeBudget", () => {
     expect(result.debtLimited).toBe(true);
   });
 
-  it("keeps a zero down payment valid without inventing a budget increase", () => {
-    const result = computeBudget({ ...base, downPaymentCents: 0 });
-    expect(result.maxPurchaseCents).toBe(result.maxLoanCents);
+  it("caps the purchase at the minimum-down-payment rule when no down payment is entered", () => {
+    const result = computeBudget({
+      annualIncomeCents: 120_000_00,
+      monthlyDebtsCents: 0,
+      downPaymentCents: 0,
+      rateBp: 479,
+      amortizationMonths: 300,
+    });
+    // Income supports a 702 113,62 $ loan, but a 0 $ down payment buys nothing under federal rules.
+    expect(result.maxLoanCents).toBe(70_211_362);
+    expect(result.maxPurchaseCents).toBe(0);
+    expect(result.downPaymentLimited).toBe(true);
   });
-});
 
-describe("parseBudget", () => {
   it("accepts French-formatted money and returns a computation", () => {
     const result = parseBudget({
       income: "120 000",
@@ -140,5 +155,47 @@ describe("parseBudget", () => {
     // 40 % of 5 000 $ = 2 000 $/month for 300 months at 0 %.
     expect(result.computation.monthlyHousingCents).toBe(200_000);
     expect(result.computation.maxLoanCents).toBe(60_000_000);
+  });
+});
+
+
+describe("Canadian mortgage rules", () => {
+  it("qualifies at the greater of contract+2 % and 5,25 % when the stress test is on", () => {
+    expect(qualifyingRateBp(479, true)).toBe(679);
+    // contract 3,50 % + 2 % = 5,50 % beats the 5,25 % floor
+    expect(qualifyingRateBp(350, true)).toBe(550);
+    // contract 3,00 % + 2 % = 5,00 % < 5,25 %, so the floor applies
+    expect(qualifyingRateBp(300, true)).toBe(525);
+    expect(qualifyingRateBp(479, false)).toBe(479);
+  });
+
+  it("applies the federal minimum down payment (5 % up to 500k, 10 % above)", () => {
+    expect(minimumDownPaymentCents(40_000_000)).toBe(2_000_000);
+    expect(minimumDownPaymentCents(50_000_000)).toBe(2_500_000);
+    expect(minimumDownPaymentCents(60_000_000)).toBe(3_500_000);
+    expect(maxPurchaseByDownPaymentCents(6_000_000)).toBe(85_000_000);
+  });
+
+  it("reduces capacity when the stress test is enabled", () => {
+    const plain = computeBudget({
+      annualIncomeCents: 120_000_00,
+      monthlyDebtsCents: 0,
+      downPaymentCents: 6_000_000,
+      rateBp: 479,
+      amortizationMonths: 300,
+    });
+    const stressed = computeBudget({
+      annualIncomeCents: 120_000_00,
+      monthlyDebtsCents: 0,
+      downPaymentCents: 6_000_000,
+      rateBp: 479,
+      amortizationMonths: 300,
+      applyStressTest: true,
+    });
+    expect(plain.qualifyingRateBp).toBe(479);
+    expect(stressed.qualifyingRateBp).toBe(679);
+    expect(stressed.maxLoanCents).toBeLessThan(plain.maxLoanCents);
+    expect(plain.maxPurchaseCents).toBe(76_211_362);
+    expect(stressed.maxPurchaseCents).toBe(64_181_913);
   });
 });

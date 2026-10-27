@@ -438,9 +438,9 @@ describe("estimateProperty", () => {
       valueTotalCents: dollars(1_073_800),
     });
     const result = estimateProperty(subject264, [
-      unit({ id: "rich-1", umv: "9001", cubf: "1000", landAreaM2: 200, valueTotalCents: dollars(5_000_000) }),
-      unit({ id: "rich-2", umv: "9002", cubf: "1000", landAreaM2: 210, valueTotalCents: dollars(5_100_000) }),
-      unit({ id: "rich-3", umv: "9003", cubf: "1000", landAreaM2: 180, valueTotalCents: dollars(5_200_000) }),
+      unit({ id: "rich-1", propertyType: "plex", umv: "9001", cubf: "1000", landAreaM2: 200, valueTotalCents: dollars(5_000_000) }),
+      unit({ id: "rich-2", propertyType: "plex", umv: "9002", cubf: "1000", landAreaM2: 210, valueTotalCents: dollars(5_100_000) }),
+      unit({ id: "rich-3", propertyType: "plex", umv: "9003", cubf: "1000", landAreaM2: 180, valueTotalCents: dollars(5_200_000) }),
     ]);
 
     expect(result.comparablesTier).toBe("municipality-cubf");
@@ -477,5 +477,17 @@ describe("estimateProperty", () => {
     expect(result.lowCents).toBeLessThanOrEqual(result.estimateCents);
     expect(result.highCents).toBeGreaterThanOrEqual(result.estimateCents);
     expect(result.comparablesCount).toBe(6);
+  });
+});
+
+
+describe("property-type homogeneity", () => {
+  it("never mixes a plex into the comparables of a single-family home", () => {
+    const subject = unit({ id: "s", matricule: "s", propertyType: "unifamiliale" });
+    const sameType = unit({ id: "a", matricule: "a", propertyType: "unifamiliale" });
+    const plex = unit({ id: "b", matricule: "b", propertyType: "plex" });
+
+    const result = findComparablesWithTier(subject, [sameType, plex]);
+    expect(result.comparables.map((c) => c.id)).toEqual(["a"]);
   });
 });

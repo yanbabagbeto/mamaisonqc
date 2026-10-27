@@ -1,5 +1,8 @@
 import Link from "next/link";
 
+import { signOutAction } from "@/app/deconnexion/actions";
+import { getCurrentUser } from "@/lib/auth";
+
 import { LocaleSwitcher } from "@/components/layout/locale-switcher";
 import { Wordmark } from "@/components/layout/logo";
 import { ButtonLink } from "@/components/ui/button";
@@ -7,8 +10,7 @@ import { getLocale, getMessages } from "@/i18n/server";
 import { localePath } from "@/i18n/config";
 
 export async function SiteHeader() {
-  const locale = await getLocale();
-  const t = await getMessages();
+  const [locale, t, user] = await Promise.all([getLocale(), getMessages(), getCurrentUser()]);
   const path = (href: string) => localePath(href, locale);
 
   const nav = [
@@ -48,12 +50,31 @@ export async function SiteHeader() {
 
         <div className="hidden items-center gap-2 xl:flex">
           <LocaleSwitcher locale={locale} label={t.localeSwitcher.label} />
-          <Link
-            href={path("/connexion")}
-            className="rounded-lg px-3 py-2 text-sm font-semibold text-ink-soft hover:text-primary"
-          >
-            {t.nav.login}
-          </Link>
+          {user ? (
+            <>
+              <Link
+                href={path("/proprietaire/tableau-de-bord")}
+                className="rounded-lg px-3 py-2 text-sm font-semibold text-ink-soft hover:text-primary"
+              >
+                {t.nav.account}
+              </Link>
+              <form action={signOutAction}>
+                <button
+                  type="submit"
+                  className="rounded-lg px-3 py-2 text-sm font-semibold text-ink-soft hover:text-primary"
+                >
+                  {t.nav.logout}
+                </button>
+              </form>
+            </>
+          ) : (
+            <Link
+              href={path("/connexion")}
+              className="rounded-lg px-3 py-2 text-sm font-semibold text-ink-soft hover:text-primary"
+            >
+              {t.nav.login}
+            </Link>
+          )}
           <ButtonLink href={path("/recherche")} size="sm">
             {t.nav.cta}
           </ButtonLink>
@@ -82,12 +103,31 @@ export async function SiteHeader() {
                 </li>
               ))}
               <li className="border-t border-border pt-1">
-                <Link
-                  href={path("/connexion")}
-                  className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-ink-soft hover:bg-muted"
-                >
-                  {t.nav.login}
-                </Link>
+                {user ? (
+                  <>
+                    <Link
+                      href={path("/proprietaire/tableau-de-bord")}
+                      className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-ink-soft hover:bg-muted"
+                    >
+                      {t.nav.account}
+                    </Link>
+                    <form action={signOutAction}>
+                      <button
+                        type="submit"
+                        className="block w-full rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-ink-soft hover:bg-muted"
+                      >
+                        {t.nav.logout}
+                      </button>
+                    </form>
+                  </>
+                ) : (
+                  <Link
+                    href={path("/connexion")}
+                    className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-ink-soft hover:bg-muted"
+                  >
+                    {t.nav.login}
+                  </Link>
+                )}
               </li>
               <li>
                 <Link
