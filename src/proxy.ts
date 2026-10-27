@@ -9,8 +9,32 @@ import { defaultLocale } from "@/i18n/config";
  *  - anything else → `x-maqc-locale: fr`
  * Next 16 renamed Middleware to Proxy (`proxy.ts`, exported as `proxy`).
  */
+/**
+ * Routes that require a session. The optimistic cookie check here returns a real 307 before the
+ * response starts streaming (a `redirect()` inside a streamed page can only be applied client-side,
+ * which leaves no-JS visitors on a blank page); the page itself still validates the session server-side.
+ */
+const PROTECTED_PREFIXES = [
+  "/mes-interets",
+  "/parametres",
+  "/proprietaire/tableau-de-bord",
+  "/pre-marche/publier",
+];
+
 export function proxy(request: NextRequest): NextResponse {
   const { pathname, search } = request.nextUrl;
+
+  const english = pathname === "/en" || pathname.startsWith("/en/");
+  const barePath = english ? pathname.replace(/^\/en/, "") || "/" : pathname;
+  const isProtected = PROTECTED_PREFIXES.some(
+    (prefix) => barePath === prefix || barePath.startsWith(`${prefix}/`),
+  );
+  if (isProtected && !request.cookies.get("maqc_session")?.value) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = `${english ? "/en" : ""}/connexion`;
+    loginUrl.search = `?next=${encodeURIComponent(pathname)}`;
+    return NextResponse.redirect(loginUrl);
+  }
 
   if (pathname.startsWith("/_next") || pathname.startsWith("/api") || pathname === "/favicon.ico") {
     return NextResponse.next();

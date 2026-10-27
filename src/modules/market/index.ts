@@ -38,6 +38,7 @@ import {
   type PriceBandBucket,
   type RollTypeSummary,
   type ValueBand,
+  cleanTerritoryName,
 } from "./aggregate";
 
 export const MARKET_WINDOW_PERIODS = 12;
@@ -331,7 +332,7 @@ function regionOf(code: string, byCode: Map<string, TerritoryRow>): TerritoryRow
 }
 
 function toRef(row: TerritoryRow): TerritoryRef {
-  return { code: row.code, name: row.name, slug: row.slug, population: row.population };
+  return { code: row.code, name: cleanTerritoryName(row.name), slug: row.slug, population: row.population };
 }
 
 function byName(a: { name: string }, b: { name: string }): number {
@@ -442,7 +443,7 @@ export const listRegions = cache(async (): Promise<RegionSummary[]> => {
 
       return {
         code: region.code,
-        name: region.name,
+        name: cleanTerritoryName(region.name),
         slug: region.slug,
         population: region.population,
         latestPeriod: latestPeriodOf(regionRows),
@@ -504,7 +505,7 @@ export const getRegion = cache(async (param: string): Promise<RegionDetail | nul
     const rows = unitsByMunicipality.get(municipality.code) ?? [];
     return {
       code: municipality.code,
-      name: municipality.name,
+      name: cleanTerritoryName(municipality.name),
       slug: municipality.slug,
       unitCount: rows.length,
       medianRollValueCents: median(rows.map((row) => row.valueTotalCents)),

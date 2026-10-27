@@ -4,7 +4,7 @@ import { Inter, Manrope } from "next/font/google";
 import { ConsentBanner } from "@/components/layout/consent-banner";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
-import { env } from "@/lib/env";
+import { getBaseUrl } from "@/lib/site-url";
 import { htmlLang, localePath } from "@/i18n/config";
 import { getLocale, getMessages } from "@/i18n/server";
 
@@ -30,11 +30,10 @@ export const viewport: Viewport = {
 };
 
 export async function generateMetadata(): Promise<Metadata> {
-  const locale = await getLocale();
-  const t = await getMessages();
+  const [locale, t, baseUrl] = await Promise.all([getLocale(), getMessages(), getBaseUrl()]);
   const isEn = locale === "en";
   return {
-    metadataBase: new URL(env.SITE_URL),
+    metadataBase: new URL(baseUrl),
     title: {
       default: isEn
         ? "MaMaisonQC — Quebec property values, official data"

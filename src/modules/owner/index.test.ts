@@ -6,7 +6,7 @@ describe("owner module public surface", () => {
   it("exposes the finance primitives without any server-only import", () => {
     expect(
       mortgagePaymentCents({ principalCents: 30_000_000, annualRateBp: 500, amortizationMonths: 300 }),
-    ).toBe(175_377);
+    ).toBe(174_481);
     expect(equity({ estimateCents: 50_000_000, balanceCents: 30_000_000 }).equityCents).toBe(
       20_000_000,
     );

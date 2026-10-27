@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/content";
 import { localePath } from "@/i18n/config";
 import { getLocale } from "@/i18n/server";
-import { env } from "@/lib/env";
+import { getBaseUrl } from "@/lib/site-url";
 import { messagesFor } from "@/modules/content/messages";
 import { FAQ_ITEMS, FAQ_ITEMS_EN } from "../../../content/faq";
 
@@ -31,7 +31,7 @@ export default async function FaqPage() {
     "@context": "https://schema.org",
     "@type": "FAQPage",
     inLanguage: locale === "en" ? "en-CA" : "fr-CA",
-    url: new URL(localePath("/faq", locale), env.SITE_URL).toString(),
+    url: new URL(localePath("/faq", locale), await getBaseUrl()).toString(),
     mainEntity: items.map((item) => ({
       "@type": "Question",
       name: item.question,

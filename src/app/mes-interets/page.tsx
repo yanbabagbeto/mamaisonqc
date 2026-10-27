@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { SaveListingButton } from "@/components/buyer/save-listing-button";
-import { SignInRequired } from "@/components/buyer/sign-in-required";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, EmptyState } from "@/components/ui/content";
@@ -45,13 +45,9 @@ export default async function MesInteretsPage() {
   const user = await getCurrentUser();
 
   if (!user) {
-    return (
-      <SignInRequired
-        messages={messages}
-        loginHref={`${path("/connexion")}?next=${encodeURIComponent(path("/mes-interets"))}`}
-        homeHref={path("/")}
-      />
-    );
+    // Same contract as the owner pages: a protected page never renders for an anonymous
+    // visitor, it redirects with a safe `next` so the login can come back here.
+    redirect(`${path("/mes-interets")}?next=${encodeURIComponent(path("/mes-interets"))}`);
   }
 
   const [saved, interests] = await Promise.all([

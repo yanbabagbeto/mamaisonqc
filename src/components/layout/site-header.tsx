@@ -31,7 +31,7 @@ export async function SiteHeader() {
       <div className="container-page flex h-16 items-center justify-between gap-4">
         <Wordmark />
 
-        <nav aria-label={t.nav.label} className="hidden lg:block">
+        <nav aria-label={t.nav.label} className="hidden xl:block">
           <ul className="flex items-center gap-1">
             {nav.map((item) => (
               <li key={item.href}>
@@ -46,7 +46,7 @@ export async function SiteHeader() {
           </ul>
         </nav>
 
-        <div className="hidden items-center gap-2 md:flex">
+        <div className="hidden items-center gap-2 xl:flex">
           <LocaleSwitcher locale={locale} label={t.localeSwitcher.label} />
           <Link
             href={path("/connexion")}
@@ -60,7 +60,7 @@ export async function SiteHeader() {
         </div>
 
         {/* No-JS mobile navigation: <details> keeps the header a server component. */}
-        <details className="group relative md:hidden">
+        <details className="group relative xl:hidden">
           <summary
             className="flex size-10 cursor-pointer list-none items-center justify-center rounded-lg border border-border bg-surface text-ink [&::-webkit-details-marker]:hidden"
             aria-label={t.nav.menu}

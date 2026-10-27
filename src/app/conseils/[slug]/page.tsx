@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { htmlLang, localePath } from "@/i18n/config";
+import { getBaseUrl } from "@/lib/site-url";
 import { getLocale } from "@/i18n/server";
-import { env } from "@/lib/env";
 import { getArticle, listArticleSlugs } from "@/modules/content";
 import { messagesFor } from "@/modules/content/messages";
 import {
@@ -54,11 +54,11 @@ export default async function ConseilArticlePage({ params }: ArticlePageProps) {
   if (!article) {
     notFound();
   }
-  const locale = await getLocale();
+  const [locale, baseUrl] = await Promise.all([getLocale(), getBaseUrl()]);
 
   return (
     <>
-      <JsonLd data={articleJsonLd(article, env.SITE_URL, locale)} />
+      <JsonLd data={articleJsonLd(article, baseUrl, locale)} />
       <ArticleHeader article={article} locale={locale} />
       <ArticleBody article={article} locale={locale} />
     </>

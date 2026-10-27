@@ -37,10 +37,12 @@ export function assertSameOrigin(request: Request): void {
   } catch {
     // ignore malformed request URLs
   }
-  try {
-    allowed.add(new URL(env.SITE_URL).origin);
-  } catch {
-    // ignore malformed SITE_URL
+  if (env.SITE_URL) {
+    try {
+      allowed.add(new URL(env.SITE_URL).origin);
+    } catch {
+      // ignore malformed SITE_URL
+    }
   }
 
   if (!allowed.has(claimed)) {

@@ -11,7 +11,8 @@ if (typeof window !== "undefined") {
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   DATABASE_URL: z.string().min(1).default("./data/mamaisonqc.db"),
-  SITE_URL: z.string().url().default("http://localhost:3000"),
+  /** Public origin. When unset, it is derived from the request (see src/lib/site-url.ts). */
+  SITE_URL: z.string().url().optional(),
   /** MERN Adresses Québec geocoder (CC-BY 4.0). */
   GEOCODER_URL: z
     .string()

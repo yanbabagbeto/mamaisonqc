@@ -34,7 +34,8 @@ export const fr = {
     unavailable: "Fiche non disponible",
     availableLink: "Voir la fiche d'évaluation →",
     unavailableNote:
-      "Fiche non disponible pour cette adresse. La municipalité n'est peut-être pas encore couverte par le rôle d'évaluation ingéré — l'adresse reste valide, elle provient du géocodeur officiel.",
+      "Cette adresse est valide, mais son unité d'évaluation ne fait pas partie de l'échantillon de rôles ingéré pour l'instant. Toutes les municipalités ne sont pas encore couvertes, et l'échantillon est volontairement partiel — jamais comblé par une estimation inventée.",
+    marketLink: "Voir le marché de {city} →",
     errorTitle: "Recherche indisponible",
     unavailableError:
       "Recherche d'adresse indisponible. Réessayez dans un instant ou explorez le marché par région.",
@@ -82,7 +83,8 @@ export const en: SearchMessages = {
     unavailable: "Record unavailable",
     availableLink: "Open the property record →",
     unavailableNote:
-      "No property record for this address. Its municipality may not be covered by the ingested assessment roll yet — the address itself is valid: it comes from the official geocoder.",
+      "This address is valid, but its assessment unit is not part of the ingested roll sample yet. Coverage is partial on purpose, and we never fill the gap with an invented estimate.",
+    marketLink: "See the {city} market →",
     errorTitle: "Search unavailable",
     unavailableError:
       "Address search is unavailable. Try again in a moment or explore the market by region.",

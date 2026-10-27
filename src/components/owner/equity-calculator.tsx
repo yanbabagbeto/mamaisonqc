@@ -38,7 +38,8 @@ export function EquityCalculator({
   const [months, setMonths] = useState(initialState.values.months);
 
   const result = state.result;
-  const error = (field: EquityField) => state.errors[field];
+  // While the action runs, the previous result's errors must not sit next to "Calcul en cours…".
+  const error = (field: EquityField) => (pending ? undefined : state.errors[field]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
@@ -48,7 +49,7 @@ export function EquityCalculator({
           <p className="mt-1 text-sm text-ink-soft">{labels.cardIntro}</p>
 
           <form action={formAction} noValidate className="mt-5 space-y-4">
-            {state.status === "invalid" ? (
+            {!pending && state.status === "invalid" ? (
               <Alert tone="warning" title={labels.invalidTitle}>
                 {labels.invalidBody}
               </Alert>

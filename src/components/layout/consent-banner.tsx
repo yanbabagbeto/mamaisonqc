@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
 
@@ -55,6 +55,17 @@ export function ConsentBanner({ labels, policyHref }: { labels: Labels; policyHr
     () => SERVER_SNAPSHOT,
   );
 
+  // Reserve room at the bottom of the document while the banner is up, so it cannot sit on top of
+  // a submit button (reported on the equity calculator).
+  useEffect(() => {
+    const isVisible = stored !== SERVER_SNAPSHOT && stored === null;
+    const previous = document.body.style.paddingBottom;
+    if (isVisible) document.body.style.paddingBottom = "7rem";
+    return () => {
+      document.body.style.paddingBottom = previous;
+    };
+  }, [stored]);
+
   const decide = useCallback((choice: "accepte" | "refuse") => {
     try {
       window.localStorage.setItem(STORAGE_KEY, choice);
@@ -74,7 +85,8 @@ export function ConsentBanner({ labels, policyHref }: { labels: Labels; policyHr
 
   return (
     <div
-      className="fixed inset-x-3 bottom-3 z-50 mx-auto max-w-3xl rounded-card border border-border bg-surface p-4 shadow-[var(--shadow-lift)] md:inset-x-6 md:bottom-6 md:p-5"
+      // Compact, bottom-right on desktop: a full-width bar sat on top of centred form buttons.
+      className="fixed inset-x-3 bottom-3 z-50 rounded-card border border-border bg-surface p-4 shadow-[var(--shadow-lift)] md:inset-x-auto md:right-6 md:bottom-6 md:max-w-sm md:p-5"
       role="dialog"
       aria-labelledby="consent-title"
       aria-describedby="consent-desc"

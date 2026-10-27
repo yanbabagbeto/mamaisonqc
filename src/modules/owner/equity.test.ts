@@ -83,7 +83,7 @@ describe("parseEquityInput", () => {
       balanceCents: 30_000_000,
       rateBp: 500,
       amortizationMonths: 300,
-      paymentCents: 175_377,
+      paymentCents: 174_481,
       equityCents: 20_000_000,
       equityPctBp: 4_000,
       negative: false,

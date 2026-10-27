@@ -1,9 +1,9 @@
 import type { MetadataRoute } from "next";
 
-import { env } from "@/lib/env";
+import { getBaseUrl } from "@/lib/site-url";
 
-export default function robots(): MetadataRoute.Robots {
-  const base = env.SITE_URL.replace(/\/$/, "");
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  const base = await getBaseUrl();
   return {
     rules: [
       {
@@ -14,6 +14,5 @@ export default function robots(): MetadataRoute.Robots {
       },
     ],
     sitemap: `${base}/sitemap.xml`,
-    host: base,
   };
 }

@@ -351,3 +351,12 @@ export function summarizeUnitsByType(units: ReadonlyArray<UnitFact>): RollTypeSu
     (a, b) => rank(a.propertyType) - rank(b.propertyType) || a.propertyType.localeCompare(b.propertyType, "fr-CA"),
   );
 }
+
+
+/**
+ * MAMH territory names contain an en dash that some sources encode as "--"
+ * ("Gaspésie--Îles-de-la-Madeleine"). Display and metadata use a single en dash.
+ */
+export function cleanTerritoryName(name: string): string {
+  return name.replace(/-{2,}/g, "–").trim();
+}

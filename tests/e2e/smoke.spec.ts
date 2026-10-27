@@ -140,3 +140,142 @@ test.describe("auth and layout regressions", () => {
     }
   });
 });
+
+test.describe("audit regressions (user-reported bugs)", () => {
+  test("protected pages redirect anonymous visitors with a next target", async ({ request }) => {
+    for (const path of ["/mes-interets", "/parametres", "/proprietaire/tableau-de-bord"]) {
+      const response = await request.get(path, { maxRedirects: 0 });
+      expect(response.status(), `${path} must redirect`).toBe(307);
+      const location = response.headers()["location"] ?? "";
+      expect(location).toContain("/connexion?next=");
+      expect(decodeURIComponent(location)).toContain(path);
+    }
+    // English tree keeps the /en prefix in the login target.
+    const en = await request.get("/en/mes-interets", { maxRedirects: 0 });
+    expect(en.status()).toBe(307);
+    expect(en.headers()["location"]).toContain("/en/connexion?next=%2Fen%2Fmes-interets");
+  });
+
+  test("mortgage payment uses Canadian semi-annual compounding", async ({ page }) => {
+    await page.goto("/proprietaire/equite");
+    await page.waitForLoadState("networkidle");
+    await page.locator("#equity-value").fill("600000");
+    await page.locator("#equity-balance").fill("600000");
+    await page.locator("#equity-rate").fill("4,79");
+    await page.locator("#equity-years").fill("25");
+    await page.getByRole("button", { name: "Calculer mon équité" }).click();
+
+    const result = page.locator("main");
+    const compact = async () =>
+      (await result.innerText()).replace(/[\u202f\u00a0]/g, " ");
+    await expect
+      .poll(async () => /3 418,25 \$/.test(await compact()), { timeout: 20_000 })
+      .toBe(true);
+    // Monthly compounding (r/12) would overstate the payment at 3 434,52 $; it must not appear.
+    expect(/3 434,52 \$/.test(await compact())).toBe(false);
+  });
+
+  test("security headers are set and the framework is not advertised", async ({ request }) => {
+    const response = await request.get("/");
+    const headers = response.headers();
+    expect(headers["content-security-policy"]).toContain("default-src 'self'");
+    expect(headers["content-security-policy"]).toContain("frame-ancestors 'none'");
+    expect(headers["x-frame-options"]).toBe("DENY");
+    expect(headers["x-content-type-options"]).toBe("nosniff");
+    expect(headers["referrer-policy"]).toBe("strict-origin-when-cross-origin");
+    expect(headers["permissions-policy"]).toContain("geolocation=()");
+    expect(headers["x-powered-by"]).toBeUndefined();
+  });
+
+  test("robots.txt and sitemap.xml use the request origin and agree on what is public", async ({
+    request,
+  }) => {
+    const robots = await (await request.get("/robots.txt")).text();
+    expect(robots).toContain("Sitemap: http://127.0.0.1:3100/sitemap.xml");
+    expect(robots).not.toMatch(/^Host:/m);
+    expect(robots).toContain("Disallow: /connexion");
+
+    const sitemap = await (await request.get("/sitemap.xml")).text();
+    expect(sitemap).toContain("<loc>http://127.0.0.1:3100/</loc>");
+    // A URL disallowed in robots must not be advertised in the sitemap.
+    expect(sitemap).not.toContain("/connexion<");
+    expect(sitemap).not.toContain("/inscription<");
+    // Pages the footer links to are present.
+    expect(sitemap).toContain("/proprietaire/hypotheque/renouvellement-hypothecaire");
+    expect(sitemap).toContain("/proprietaire/subventions-renovation/logisvert");
+
+    const favicon = await request.get("/favicon.ico");
+    expect(favicon.status()).toBe(200);
+  });
+
+  test("address picker: no pre-selection, full labels, Enter searches instead of guessing", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const input = page.getByRole("combobox").first();
+    await input.click();
+    await input.type("123 rue Saint-Jean Québec", { delay: 25 });
+
+    const options = page.getByRole("option");
+    await expect.poll(async () => options.count(), { timeout: 20_000 }).toBeGreaterThan(0);
+    // Nothing highlighted until the user moves.
+    expect(await input.getAttribute("aria-activedescendant")).toBeNull();
+    // Rows are distinguishable by their full label (suite included), not only the postal code.
+    const labels = await options.allInnerTexts();
+    expect(new Set(labels).size).toBe(labels.length);
+
+    await input.press("Enter");
+    await page.waitForURL(/\/recherche\?q=/, { timeout: 15_000 });
+    expect(page.url()).not.toMatch(/\/evaluation\//);
+
+    // One ArrowDown highlights the first row deterministically.
+    await page.goto("/");
+    const second = page.getByRole("combobox").first();
+    await second.click();
+    await second.type("123 rue Saint-Jean Québec", { delay: 25 });
+    await expect.poll(async () => page.getByRole("option").count(), { timeout: 20_000 }).toBeGreaterThan(0);
+    await second.press("ArrowDown");
+    const active = await second.getAttribute("aria-activedescendant");
+    const firstOptionId = await page.getByRole("option").first().getAttribute("id");
+    expect(active).toBe(firstOptionId);
+  });
+
+  test("cookie banner does not cover the calculator submit button", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/proprietaire/equite");
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    const button = page.getByRole("button", { name: "Calculer mon équité" });
+    const box = await button.boundingBox();
+    const banner = await page.locator('[role="dialog"]').first().boundingBox();
+    expect(box).not.toBeNull();
+    expect(banner).not.toBeNull();
+    if (box && banner) {
+      const overlaps =
+        box.x < banner.x + banner.width &&
+        box.x + box.width > banner.x &&
+        box.y < banner.y + banner.height &&
+        box.y + box.height > banner.y;
+      expect(overlaps, "the banner must not sit on the submit button").toBe(false);
+    }
+  });
+});
+
+test.describe("responsive header", () => {
+  test("header stays on one line at 1024 px (hamburger below xl)", async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 800 });
+    await page.goto("/");
+    const navLink = page.locator('header nav a', { hasText: "Marché immobilier" }).first();
+    const visible = await navLink.isVisible().catch(() => false);
+    if (visible) {
+      const box = await navLink.boundingBox();
+      expect(box?.height ?? 0).toBeLessThanOrEqual(44);
+    } else {
+      // Below the desktop breakpoint the hamburger must be present instead.
+      await expect(page.locator("header details summary")).toBeVisible();
+    }
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(1);
+  });
+});

@@ -3,14 +3,14 @@ import { eq, inArray } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { propertyUnit, territory } from "@/db/schema";
-import { env } from "@/lib/env";
+import { getBaseUrl } from "@/lib/site-url";
 
 /**
  * Sitemap: static routes + every ingested municipality with roll data + content routes
  * exported by the content module (loaded defensively so a build without content still works).
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = env.SITE_URL.replace(/\/$/, "");
+  const base = await getBaseUrl();
   const now = new Date();
 
   const staticPaths = [
@@ -26,6 +26,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/proprietaire",
     "/proprietaire/equite",
     "/proprietaire/subventions-renovation",
+    "/proprietaire/hypotheque",
+    "/proprietaire/hypotheque/renouvellement-hypothecaire",
+    "/proprietaire/hypotheque/refinancer-pour-renover",
+    "/proprietaire/hypotheque/refinancer-pour-investir",
+    "/proprietaire/hypotheque/consolidation-de-dettes",
+    "/proprietaire/hypotheque/separation-racheter-la-maison",
+    "/proprietaire/hypotheque/vendre-ou-renover",
+    "/proprietaire/subventions-renovation/renoclimat",
+    "/proprietaire/subventions-renovation/renoclimat-adaptation",
+    "/proprietaire/subventions-renovation/logisvert",
+    "/proprietaire/subventions-renovation/logisvert-revenu-modeste",
+    "/proprietaire/subventions-renovation/maisons-abordables-plus-vertes",
     "/le-brief",
     "/nouvelles",
     "/conseils",
@@ -34,8 +46,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/donnees",
     "/conditions",
     "/confidentialite",
-    "/connexion",
-    "/inscription",
   ];
 
   type Entry = MetadataRoute.Sitemap[number];

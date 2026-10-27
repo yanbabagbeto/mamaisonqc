@@ -10,17 +10,39 @@ import {
 } from "./finance";
 
 describe("mortgagePaymentCents", () => {
-  // Reference case, computed by hand from M = P × r / (1 − (1 + r)^−n):
-  //   P = 300 000,00 $ = 30 000 000 cents
-  //   annual rate = 5,00 % = 500 bp → r = 0,05 / 12 = 0,0041666667
-  //   n = 25 years × 12 = 300 months
-  //   (1 + r)^−300 = 0,28724980…
-  //   denominator = 1 − 0,28724980 = 0,71275020
-  //   M = 30 000 000 × 0,0041666667 / 0,71275020 = 175 377,0124… cents
-  //   rounded to the cent: 175 377 cents = 1 753,77 $
-  it("returns the documented payment for 300 000 $ at 5 % over 25 years", () => {
+  // Reference case, Canadian fixed-rate (semi-annual compounding, Interest Act s. 6):
+  //   P = 300 000,00 $ = 30 000 000 cents, nominal 5,00 % = 500 bp, n = 300 months
+  //   i = (1 + 0,05/2)^(1/6) − 1 = 0,004123915465
+  //   M = P × i / (1 − (1 + i)^−n) = 174 481,3… cents → 174 481 cents = 1 744,81 $
+  it("returns the Canadian semi-annual payment for 300 000 $ at 5 % over 25 years", () => {
     expect(
       mortgagePaymentCents({ principalCents: 30_000_000, annualRateBp: 500, amortizationMonths: 300 }),
+    ).toBe(174_481);
+  });
+
+  it("matches the user-reported case: 600 000 $ at 4,79 % over 300 months", () => {
+    // 3 418,25 $ with semi-annual compounding; monthly compounding would overstate it at 3 434,52 $.
+    expect(
+      mortgagePaymentCents({ principalCents: 60_000_000, annualRateBp: 479, amortizationMonths: 300 }),
+    ).toBe(341_825);
+    expect(
+      mortgagePaymentCents({
+        principalCents: 60_000_000,
+        annualRateBp: 479,
+        amortizationMonths: 300,
+        compounding: "monthly",
+      }),
+    ).toBe(343_452);
+  });
+
+  it("supports explicit monthly compounding for variable-rate illustrations", () => {
+    expect(
+      mortgagePaymentCents({
+        principalCents: 30_000_000,
+        annualRateBp: 500,
+        amortizationMonths: 300,
+        compounding: "monthly",
+      }),
     ).toBe(175_377);
   });
 
@@ -70,15 +92,15 @@ describe("amortizationSchedule", () => {
     expect(rows.at(-1)?.balanceCents).toBe(0);
   });
 
-  it("applies the documented first month", () => {
-    // Month 1 interest: 30 000 000 × 0,05 / 12 = 125 000 cents = 1 250,00 $.
-    // Principal portion: 175 377 − 125 000 = 50 377 cents.
+  it("applies the documented first month (semi-annual rate)", () => {
+    // Month 1 interest: 30 000 000 × 0,004123915465 = 123 717 cents.
+    // Principal portion: 174 481 − 123 717 = 50 764 cents.
     expect(rows[0]).toEqual({
       month: 1,
-      paymentCents: 175_377,
-      interestCents: 125_000,
-      principalCents: 50_377,
-      balanceCents: 29_949_623,
+      paymentCents: 174_481,
+      interestCents: 123_717,
+      principalCents: 50_764,
+      balanceCents: 29_949_236,
     });
   });
 
@@ -91,12 +113,12 @@ describe("amortizationSchedule", () => {
     const last = rows.at(-1);
     expect(last).toBeDefined();
     expect(last?.month).toBe(300);
-    // The last payment absorbs the rounding drift: 174 653 principal + 728 interest.
+    // The last payment absorbs the rounding drift.
     expect(last).toEqual({
       month: 300,
-      paymentCents: 175_381,
-      interestCents: 728,
-      principalCents: 174_653,
+      paymentCents: 174_778,
+      interestCents: 718,
+      principalCents: 174_060,
       balanceCents: 0,
     });
   });
@@ -219,10 +241,10 @@ describe("renewalScenario", () => {
       remainingMonths: 240,
     });
     expect(result).toEqual({
-      currentPaymentCents: 167_764,
-      newPaymentCents: 155_476,
-      monthlyDeltaCents: -12_288,
-      annualDeltaCents: -147_456,
+      currentPaymentCents: 166_992,
+      newPaymentCents: 154_968,
+      monthlyDeltaCents: -12_024,
+      annualDeltaCents: -144_288,
       remainingMonths: 240,
     });
   });

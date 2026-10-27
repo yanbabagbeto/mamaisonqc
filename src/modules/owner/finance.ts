@@ -5,11 +5,15 @@
  * Conventions that the whole product relies on:
  * - money is never stored or returned as a float; only intermediate annuity factors are computed
  *   with doubles, then rounded to the nearest cent;
- * - rates are annual, nominal and compounded monthly (`annualRateBp / 120 000` gives the monthly
- *   decimal rate);
+ * - **Canadian fixed-rate convention**: the nominal annual rate is compounded **semi-annually**
+ *   (Interest Act, s. 6), so the periodic monthly rate is (1 + r/2)^(1/6) − 1, not r/12. A caller can
+ *   opt into monthly compounding for variable-rate illustrations;
  * - payments are rounded to the cent, and the amortization schedule's last payment absorbs the
  *   rounding drift so the sum of principal repaid is exactly the principal borrowed.
  */
+
+/** Canadian mortgages quote a nominal rate compounded semi-annually; variable rates use monthly. */
+export type Compounding = "semi-annual" | "monthly";
 
 export type MortgagePaymentInput = {
   /** Amount borrowed, in cents. */
@@ -18,6 +22,8 @@ export type MortgagePaymentInput = {
   annualRateBp: number;
   /** Number of monthly payments. */
   amortizationMonths: number;
+  /** Defaults to "semi-annual" — the fixed-rate convention used everywhere in Canada. */
+  compounding?: Compounding;
 };
 
 export type AmortizationRow = {
@@ -87,8 +93,15 @@ function assertInteger(name: string, value: number, min: number, max = Number.MA
   }
 }
 
-function monthlyRate(annualRateBp: number): number {
-  return annualRateBp / 120_000;
+/**
+ * Periodic monthly rate for a nominal annual rate.
+ * - semi-annual (default, fixed-rate): (1 + r/2)^(1/6) − 1
+ * - monthly (variable-rate illustration): r/12
+ */
+export function periodicMonthlyRate(annualRateBp: number, compounding: Compounding = "semi-annual"): number {
+  const annual = annualRateBp / 10_000;
+  if (compounding === "monthly") return annual / 12;
+  return Math.pow(1 + annual / 2, 1 / 6) - 1;
 }
 
 function assertRate(annualRateBp: number): void {
@@ -111,6 +124,7 @@ export function mortgagePaymentCents({
   principalCents,
   annualRateBp,
   amortizationMonths,
+  compounding = "semi-annual",
 }: MortgagePaymentInput): number {
   assertInteger("principalCents", principalCents, 0);
   assertRate(annualRateBp);
@@ -118,7 +132,7 @@ export function mortgagePaymentCents({
 
   if (principalCents === 0) return 0;
 
-  const rate = monthlyRate(annualRateBp);
+  const rate = periodicMonthlyRate(annualRateBp, compounding);
   if (rate === 0) {
     return Math.round(principalCents / amortizationMonths);
   }
@@ -140,6 +154,7 @@ export function amortizationSchedule({
   principalCents,
   annualRateBp,
   amortizationMonths,
+  compounding = "semi-annual",
   maxRows,
 }: MortgagePaymentInput & { maxRows?: number }): AmortizationRow[] {
   assertInteger("principalCents", principalCents, 0);
@@ -150,8 +165,13 @@ export function amortizationSchedule({
   }
   if (principalCents === 0 || maxRows === 0) return [];
 
-  const rate = monthlyRate(annualRateBp);
-  const scheduledPayment = mortgagePaymentCents({ principalCents, annualRateBp, amortizationMonths });
+  const rate = periodicMonthlyRate(annualRateBp, compounding);
+  const scheduledPayment = mortgagePaymentCents({
+    principalCents,
+    annualRateBp,
+    amortizationMonths,
+    compounding,
+  });
   const rows: AmortizationRow[] = [];
   let balance = principalCents;
   const rowLimit = maxRows === undefined ? amortizationMonths : Math.min(maxRows, amortizationMonths);

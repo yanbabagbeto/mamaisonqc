@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   aggregatePriceBands,
+  cleanTerritoryName,
   buildSeries,
   buildValueBands,
   median,
@@ -275,5 +276,17 @@ describe("summarizeUnitsByType", () => {
 
   it("returns an empty array when no unit is ingested", () => {
     expect(summarizeUnitsByType([])).toEqual([]);
+  });
+});
+
+describe("cleanTerritoryName", () => {
+  it("turns the source double hyphen into a single en dash", () => {
+    expect(cleanTerritoryName("Gaspésie--Îles-de-la-Madeleine")).toBe("Gaspésie–Îles-de-la-Madeleine");
+    expect(cleanTerritoryName("Saguenay--Lac-Saint-Jean")).toBe("Saguenay–Lac-Saint-Jean");
+  });
+
+  it("leaves ordinary hyphenated names untouched", () => {
+    expect(cleanTerritoryName("Les Îles-de-la-Madeleine")).toBe("Les Îles-de-la-Madeleine");
+    expect(cleanTerritoryName("  Montréal  ")).toBe("Montréal");
   });
 });

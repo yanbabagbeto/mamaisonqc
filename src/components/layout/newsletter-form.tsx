@@ -62,7 +62,7 @@ export function NewsletterForm({ source = "footer", labels }: { source?: string;
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-2" noValidate>
+    <form onSubmit={onSubmit} method="post" action="/api/newsletter" className="space-y-2" noValidate>
       <Label htmlFor={`newsletter-${source}`} className="text-sm">
         {labels.title}
       </Label>

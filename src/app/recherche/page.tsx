@@ -17,6 +17,39 @@ import {
 } from "@/modules/geo";
 import { messagesFor, type SearchMessages } from "@/modules/geo/messages";
 import { AppError } from "@/shared/errors";
+import { db } from "@/db/client";
+import { territory } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
+
+/**
+ * Where a searched address's city can still be explored when its unit is not in our roll sample:
+ * the municipality market page, when the city exists in the territory reference. Never a dead end,
+ * never a fabricated property page.
+ */
+async function marketHrefForCity(city: string, locale: Locale): Promise<string | null> {
+  const name = city.trim();
+  if (!name) return null;
+  const rows = await db
+    .select({ slug: territory.slug, parentCode: territory.parentCode })
+    .from(territory)
+    .where(and(eq(territory.level, "municipalite"), eq(territory.name, name)))
+    .limit(1);
+  const municipality = rows[0];
+  if (!municipality?.parentCode) return null;
+  const regionRows = await db
+    .select({ slug: territory.slug })
+    .from(territory)
+    .where(and(eq(territory.level, "region"), eq(territory.codeGeo, municipality.parentCode)))
+    .limit(1);
+  const region = regionRows[0];
+  if (!region) return null;
+  return localePath(`/marche-immobilier/${region.slug}/${municipality.slug}`, locale);
+}
+
+/** Tiny {placeholder} interpolator — the geo dictionary keeps templates as plain strings. */
+function fill(template: string, vars: Record<string, string>): string {
+  return template.replace(/\{(\w+)\}/g, (_, key: string) => vars[key] ?? "");
+}
 
 type RecherchePageProps = {
   searchParams: Promise<{ q?: string | string[] }>;
@@ -40,10 +73,12 @@ function CandidateRow({
   candidate,
   messages,
   locale,
+  marketHref,
 }: {
   candidate: AddressCandidate;
   messages: SearchMessages;
   locale: Locale;
+  marketHref: string | null;
 }) {
   return (
     <li className="rounded-card border border-border bg-surface px-4 py-4">
@@ -82,9 +117,18 @@ function CandidateRow({
           </Link>
         </p>
       ) : (
-        <p className="mt-3 text-sm leading-relaxed text-muted-fg">
-          {messages.results.unavailableNote}
-        </p>
+        <>
+          <p className="mt-3 text-sm leading-relaxed text-muted-fg">
+            {messages.results.unavailableNote}
+          </p>
+          {marketHref ? (
+            <p className="mt-2">
+              <Link href={marketHref} className="text-sm font-semibold text-primary">
+                {fill(messages.results.marketLink, { city: candidate.city })}
+              </Link>
+            </p>
+          ) : null}
+        </>
       )}
     </li>
   );
@@ -117,6 +161,11 @@ export default async function RecherchePage({ searchParams }: RecherchePageProps
     }
   }
 
+  const marketHrefs = new Map<string, string | null>();
+  for (const candidate of candidates ?? []) {
+    if (candidate.matricule || marketHrefs.has(candidate.city)) continue;
+    marketHrefs.set(candidate.city, await marketHrefForCity(candidate.city, locale));
+  }
   const validationMessage = query.length > 0 && !parsed.success ? messages.form.invalid : null;
 
   return (
@@ -196,6 +245,7 @@ export default async function RecherchePage({ searchParams }: RecherchePageProps
                       candidate={candidate}
                       messages={messages}
                       locale={locale}
+                      marketHref={marketHrefs.get(candidate.city) ?? null}
                     />
                   ))}
                 </ul>

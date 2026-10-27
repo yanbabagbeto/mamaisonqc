@@ -94,9 +94,18 @@ export function AddressSearch({
           setOpen(false);
           return;
         }
-        setCandidates(payload.data.candidates);
+        // De-duplicate: the geocoder can return the same civic twice (two postal codes / suites).
+        const unique = payload.data.candidates.filter(
+          (candidate, index, all) =>
+            all.findIndex(
+              (other) => other.label === candidate.label && other.postal === candidate.postal,
+            ) === index,
+        );
+        setCandidates(unique);
         setOpen(true);
-        setActiveIndex(payload.data.candidates.length > 0 ? 0 : -1);
+        // Nothing is highlighted until the user moves: Enter then submits the query instead of
+        // silently opening whichever row happened to be first (wrong-address bug).
+        setActiveIndex(-1);
       } catch (cause) {
         if ((cause as Error).name === "AbortError") return;
         setError(labels.unavailable);
@@ -137,7 +146,9 @@ export function AddressSearch({
     }
     if (event.key === "ArrowUp") {
       event.preventDefault();
-      setActiveIndex((index) => Math.max(index - 1, 0));
+      setActiveIndex((index) =>
+        index <= 0 ? Math.max(candidates.length - 1, 0) : index - 1,
+      );
       return;
     }
     if (event.key === "Enter") {
@@ -228,9 +239,7 @@ export function AddressSearch({
                   index === activeIndex ? "bg-primary-soft" : "hover:bg-muted",
                 )}
               >
-                <span className="text-sm font-semibold text-ink">
-                  {candidate.civic} {candidate.street}
-                </span>
+                <span className="text-sm font-semibold text-ink">{candidate.label}</span>
                 <span className="text-xs text-muted-fg">
                   {candidate.city}
                   {candidate.postal ? ` · ${candidate.postal}` : ""}

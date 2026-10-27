@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { DeleteAccountForm } from "@/components/buyer/delete-account-form";
 import { PrefsForm } from "@/components/buyer/prefs-form";
-import { SignInRequired } from "@/components/buyer/sign-in-required";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { LocaleSwitcher } from "@/components/layout/locale-switcher";
 import { localePath } from "@/i18n/config";
@@ -38,13 +38,9 @@ export default async function ParametresPage() {
   const user = await getCurrentUser();
 
   if (!user) {
-    return (
-      <SignInRequired
-        messages={messages}
-        loginHref={`${path("/connexion")}?next=${encodeURIComponent(path("/parametres"))}`}
-        homeHref={path("/")}
-      />
-    );
+    // Same contract as the owner pages: a protected page never renders for an anonymous
+    // visitor, it redirects with a safe `next` so the login can come back here.
+    redirect(`${path("/parametres")}?next=${encodeURIComponent(path("/parametres"))}`);
   }
 
   const prefs = await getNotificationPrefs(user.id);
