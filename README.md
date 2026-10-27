@@ -71,6 +71,23 @@ scripts/serve.sh stop     # stops it
 - Current deployment verified on 3300; ports already taken on this Mac at deploy time: 53, 3000,
   3002, 3773, 4001, 4322, 5000, 5174, 5433, 7000, 7880, 7881, 9230, 51704, 56531, 61608, 65372, 65509.
 
+### Test on a real iPhone / Android
+
+Both surfaces are reachable from a phone on the same Wi-Fi as this Mac.
+
+```bash
+scripts/serve.sh 3300 --lan          # web app on 0.0.0.0 + the LAN URL printed
+cd mobile && npx expo start --lan    # native app via Expo Go
+```
+
+- Web (Safari/Chrome on the phone): `http://<LAN-IP>:3300` (`/en` for English).
+- Native: install **Expo Go** (App Store / Play Store), then scan the QR in `docs/devices/` or enter
+  `exp://<LAN-IP>:8081` manually. The app reads `EXPO_PUBLIC_API_URL` from `mobile/.env`.
+- QRs for the current LAN address: `docs/devices/expo-go-ios-android.png` and `docs/devices/web-lan.png`.
+- The LAN address changes with the network: rerun `scripts/serve.sh 3300 --lan`, update
+  `mobile/.env`, restart Expo, regenerate the QRs.
+- Expo Go must support the project SDK (58); if it refuses, run `cd mobile && npx expo install --check`.
+
 ### Admin access
 
 ```bash
