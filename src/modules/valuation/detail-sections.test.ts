@@ -44,6 +44,7 @@ describe("buildRollDetailSections", () => {
     expect(idRows[fr.detail.rows.matricule]).toBe("258977954710000000");
     expect(idRows[fr.detail.rows.municipality]).toBe("Québec");
     expect(idRows[fr.detail.rows.umv]).toBe("9810");
+    expect(idRows[fr.detail.rows.cadastralLot]).toBe("5 123 456");
     expect(idRows[fr.detail.rows.use]).toContain("Logement");
 
     const valueRows = Object.fromEntries(values!.rows.map((row) => [row.label, row.value]));

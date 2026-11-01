@@ -28,6 +28,7 @@ From the official MAMH guide *Guide sur les données du rôle d'évaluation fonc
 | `RL0101Ax` | numéro inférieur (civic) | `addr_no` |
 | `RL0101Gx` | nom de la voie publique | `addr_street` ( + `addr_street_norm`) |
 | `RL0101Ix` | numéro d'appartement / local | `addr_suite` |
+| `RL0103Ax` | lot cadastral (7 digits). Display-only; a unit may list several lots (divided co-ownership), the **first in document order** is emitted. Empty when absent (2 964 units in v1 scope). | `cadastral_lot` |
 | `RL0104A…F` | **matricule (`mat18`)** = A(4)+B(2)+C(4)+D(1)+E(3)+F(4), zero-padded — the assessor's unit identifier in the 2026 structure. `RL0103Ax` (cadastral lots) is NOT unique and is absent for some units: do not use it. | `matricule` |
 | `RL0105A` | utilisation prédominante (code CUBF) | `cubf` → `property_type` via the CUBF list |
 | `RL0107A` | numéro d'unité de voisinage (UMV) | `umv` |
@@ -54,7 +55,7 @@ code_geo,name,level,parent_code,slug,population
 
 `data/normalized/property_units.csv`
 ```
-id,municipality_code,matricule,umv,cubf,cubf_label,property_type,addr_no,addr_street,addr_street_norm,addr_suite,land_area_m2,frontage_m,year_built,floors,value_land_cents,value_building_cents,value_total_cents,value_prior_cents,market_ref_date,roll_year,source_url,dataset_id,lat,lon
+id,municipality_code,matricule,umv,cubf,cubf_label,property_type,addr_no,addr_street,addr_street_norm,addr_suite,land_area_m2,frontage_m,year_built,floors,value_land_cents,value_building_cents,value_total_cents,value_prior_cents,market_ref_date,roll_year,source_url,dataset_id,lat,lon,cadastral_lot
 ```
 - `id` = `<municipality_code>-<matricule>`.
 - `property_type` ∈ `unifamiliale|copropriete|plex|terrain|non-residentiel|autre`, derived only from real
