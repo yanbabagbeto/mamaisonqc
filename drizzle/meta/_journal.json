@@ -15,6 +15,13 @@
       "when": 1793011124903,
       "tag": "0001_nebulous_kingpin",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1793574651092,
+      "tag": "0002_curious_doomsday",
+      "breakpoints": true
     }
   ]
 }

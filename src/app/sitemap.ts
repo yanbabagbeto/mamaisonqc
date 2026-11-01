@@ -26,6 +26,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/proprietaire",
     "/proprietaire/equite",
     "/proprietaire/subventions-renovation",
+    "/taux-hypothecaires",
     "/proprietaire/hypotheque",
     "/proprietaire/hypotheque/renouvellement-hypothecaire",
     "/proprietaire/hypotheque/refinancer-pour-renover",

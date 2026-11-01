@@ -8,6 +8,7 @@ const baseUnit: RollDetailUnit = {
   addrStreet: "Belair",
   addrSuite: null,
   matricule: "258977954710000000",
+  cadastralLot: "5 123 456",
   umv: "9810",
   cubf: "1000",
   cubfLabel: "Logement",

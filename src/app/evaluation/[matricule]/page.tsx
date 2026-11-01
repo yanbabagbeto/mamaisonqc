@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ComparablesTable } from "@/components/valuation/comparables-table";
+import { PropertyMap } from "@/components/valuation/property-map";
 import { RollDetailDialog } from "@/components/valuation/roll-detail-dialog";
 import { EstimateSection } from "@/components/valuation/estimate-section";
 import { ButtonLink } from "@/components/ui/button";
@@ -14,7 +15,7 @@ import { getEvaluationPageData } from "@/modules/valuation/data";
 import { buildRollDetailSections } from "@/modules/valuation/detail-sections";
 import { formatAddress } from "@/modules/valuation/labels";
 import { messagesFor, propertyTypeLabel } from "@/modules/valuation/messages";
-import { formatCad, formatDateFr } from "@/shared/format";
+import { formatCad, formatDateFr, formatPercent } from "@/shared/format";
 
 type EvaluationPageProps = {
   params: Promise<{ matricule: string }>;
@@ -231,6 +232,79 @@ export default async function EvaluationPage({ params }: EvaluationPageProps) {
                 )}
                 <p className="mt-4 text-xs leading-relaxed text-muted-fg">
                   {messages.comparables.footnote}
+                </p>
+              </CardBody>
+            </Card>
+          </section>
+
+          <section aria-labelledby="details-propriete">
+            <h2 id="details-propriete" className="font-display text-2xl font-bold text-ink">
+              {messages.details.title}
+            </h2>
+            <p className="mt-1 text-sm text-muted-fg">{messages.details.intro}</p>
+            <Card className="mt-4">
+              <CardBody>
+                <dl className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
+                  {[...detailSections[0]!.rows, ...detailSections[1]!.rows].map((row) => (
+                    <div key={row.label} className="flex items-baseline justify-between gap-4 border-b border-border/60 pb-2">
+                      <dt className="text-sm text-muted-fg">{row.label}</dt>
+                      <dd className="tabular text-sm font-semibold text-ink">{row.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </CardBody>
+            </Card>
+          </section>
+
+          <section aria-labelledby="localisation">
+            <h2 id="localisation" className="font-display text-2xl font-bold text-ink">
+              {messages.map.title}
+            </h2>
+            <div className="mt-4">
+              {unit.lat !== null && unit.lon !== null ? (
+                <PropertyMap
+                  lat={unit.lat}
+                  lon={unit.lon}
+                  label={address}
+                  openLabel={messages.map.open}
+                />
+              ) : (
+                <p className="rounded-card border border-dashed border-border-strong bg-surface px-4 py-6 text-sm text-muted-fg">
+                  {messages.map.unavailable}
+                </p>
+              )}
+            </div>
+          </section>
+
+          <section aria-labelledby="historique-role">
+            <h2 id="historique-role" className="font-display text-2xl font-bold text-ink">
+              {messages.rollHistory.title}
+            </h2>
+            <p className="mt-1 text-sm text-muted-fg">{messages.rollHistory.intro}</p>
+            <Card className="mt-4">
+              <CardBody>
+                <dl className="grid gap-5 sm:grid-cols-3">
+                  <Stat
+                    label={messages.rollHistory.current.replace("{year}", String(unit.rollYear))}
+                    value={formatCad(unit.valueTotalCents, locale)}
+                  />
+                  <Stat
+                    label={messages.rollHistory.prior}
+                    value={
+                      unit.valuePriorCents === null ? "—" : formatCad(unit.valuePriorCents, locale)
+                    }
+                  />
+                  <Stat
+                    label={messages.rollHistory.change}
+                    value={
+                      unit.valuePriorCents !== null && unit.valuePriorCents > 0
+                        ? formatPercent(unit.valueTotalCents / unit.valuePriorCents - 1, 1, locale)
+                        : "—"
+                    }
+                  />
+                </dl>
+                <p className="mt-4 text-xs leading-relaxed text-muted-fg">
+                  {messages.roll.marketRefLine(formatDateFr(unit.marketRefDate, locale))}
                 </p>
               </CardBody>
             </Card>

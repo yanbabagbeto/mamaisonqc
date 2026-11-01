@@ -38,6 +38,7 @@ WANTED = {
     "RL0101Ax",
     "RL0101Gx",
     "RL0101Ix",
+    "RL0103Ax",
     "RL0104A",
     "RL0104B",
     "RL0104C",
@@ -91,6 +92,7 @@ PROPERTY_UNIT_HEADER = (
     "dataset_id",
     "lat",
     "lon",
+    "cadastral_lot",
 )
 
 RESIDENTIAL_TYPES = {"unifamiliale", "copropriete", "plex"}
@@ -183,6 +185,11 @@ def normalize_unit(
         dataset_id,
         "",  # lat, joined from the GeoPackage later
         "",  # lon
+        # First RL0103Ax in document order. The roll lists every lot of the unit and
+        # carries no "primary lot" flag; the full list lives in the GeoPackage
+        # b05v_lot_cadst_2026 table. Duplicates across units are legitimate
+        # (divided co-ownership shares the building's lots).
+        (raw.get("RL0103Ax") or "").strip(),
     ]
 
 
@@ -224,7 +231,9 @@ def compute_quotas(type_counts: Counter, cap: int) -> dict[str, int] | None:
     rare types stay auditable instead of disappearing.
     """
     total = sum(type_counts.values())
-    if cap <= 0 or total <= cap:
+    if cap <= 0:
+        return None
+    if total <= cap:
         return {key: type_counts[key] for key in TYPE_PRIORITY if type_counts.get(key, 0) > 0}
     present = [key for key in TYPE_PRIORITY if type_counts.get(key, 0) > 0]
     quotas = {key: 0 for key in present}

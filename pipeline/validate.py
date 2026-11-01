@@ -74,7 +74,7 @@ def main(argv: list[str] | None = None) -> int:
     # --- 1, 3, 4, 7, 8 over the artifact, collected in one streaming pass ----------
     header, unit_rows = read_csv(unit_path)
     expected_header = list(
-        """id,municipality_code,matricule,umv,cubf,cubf_label,property_type,addr_no,addr_street,addr_street_norm,addr_suite,land_area_m2,frontage_m,year_built,floors,value_land_cents,value_building_cents,value_total_cents,value_prior_cents,market_ref_date,roll_year,source_url,dataset_id,lat,lon""".split(",")
+        """id,municipality_code,matricule,umv,cubf,cubf_label,property_type,addr_no,addr_street,addr_street_norm,addr_suite,land_area_m2,frontage_m,year_built,floors,value_land_cents,value_building_cents,value_total_cents,value_prior_cents,market_ref_date,roll_year,source_url,dataset_id,lat,lon,cadastral_lot""".split(",")
     )
     if header != expected_header:
         validation.append(

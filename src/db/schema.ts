@@ -60,6 +60,7 @@ export const propertyUnit = sqliteTable(
     addrStreet: text("addr_street"), // RL0101Gx
     addrStreetNorm: text("addr_street_norm"), // lowercased, accent-stripped, for search matching
     addrSuite: text("addr_suite"), // RL0101Ix
+    cadastralLot: text("cadastral_lot"), // RL0103Ax — may repeat across units of the same lot
     landAreaM2: real("land_area_m2"), // RL0302A
     frontageM: real("frontage_m"), // RL0301A
     yearBuilt: integer("year_built"), // RL0307A

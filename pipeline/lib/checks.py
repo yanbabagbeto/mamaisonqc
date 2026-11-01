@@ -104,6 +104,7 @@ def _independent_row(element: ET.Element, municipality_code: str, roll_year: int
         dataset_id,
         "",  # lat: not in the XML
         "",  # lon
+        text("RL0103Ax"),
     ]
 
 

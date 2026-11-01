@@ -125,6 +125,7 @@ async function seedPropertyUnits(): Promise<number> {
       addrStreet: row.addr_street || null,
       addrStreetNorm: row.addr_street_norm || (row.addr_street ? normalizeStreet(row.addr_street) : null),
       addrSuite: row.addr_suite || null,
+      cadastralLot: row.cadastral_lot || null,
       landAreaM2: toFloatOrNull(row.land_area_m2),
       frontageM: toFloatOrNull(row.frontage_m),
       yearBuilt: toIntOrNull(row.year_built),

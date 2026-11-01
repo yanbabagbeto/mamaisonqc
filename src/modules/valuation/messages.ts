@@ -121,6 +121,22 @@ export const fr = {
     disclaimer:
       "MaMaisonQC n'est pas un évaluateur agréé et n'est affilié à aucune municipalité. Les seules données officielles de cette page sont les valeurs au rôle et leur date de référence.",
   },
+  map: {
+    title: "Localisation",
+    open: "Ouvrir dans OpenStreetMap",
+    unavailable: "Coordonnées non disponibles pour cette unité.",
+  },
+  details: {
+    title: "Détails de la propriété",
+    intro: "Les renseignements inscrits au rôle d'évaluation pour cette unité.",
+  },
+  rollHistory: {
+    title: "Historique au rôle",
+    intro: "Deux millésimes de rôle sont disponibles pour cette unité.",
+    current: "Valeur au rôle {year}",
+    prior: "Valeur au rôle antérieur",
+    change: "Variation",
+  },
   detail: {
     trigger: "Voir plus de détails",
     title: "Fiche du rôle d'évaluation",
@@ -136,6 +152,7 @@ export const fr = {
       address: "Adresse",
       municipality: "Municipalité",
       matricule: "Matricule",
+      cadastralLot: "Lot (cadastre)",
       umv: "Unité de voisinage",
       use: "Utilisation prédominante",
       type: "Type de propriété",
@@ -297,6 +314,22 @@ export const en: EvaluationMessages = {
     disclaimer:
       "MaMaisonQC is not a licensed appraiser and is not affiliated with any municipality. The only official data on this page are the roll values and their reference date.",
   },
+  map: {
+    title: "Location",
+    open: "Open in OpenStreetMap",
+    unavailable: "Coordinates are not available for this unit.",
+  },
+  details: {
+    title: "Property details",
+    intro: "What the assessment roll records for this unit.",
+  },
+  rollHistory: {
+    title: "Roll history",
+    intro: "Two roll vintages are available for this unit.",
+    current: "Roll value {year}",
+    prior: "Prior roll value",
+    change: "Change",
+  },
   detail: {
     trigger: "See more details",
     title: "Assessment roll record",
@@ -311,6 +344,7 @@ export const en: EvaluationMessages = {
       address: "Address",
       municipality: "Municipality",
       matricule: "Roll number",
+      cadastralLot: "Lot (cadastre)",
       umv: "Neighbourhood unit",
       use: "Predominant use",
       type: "Property type",

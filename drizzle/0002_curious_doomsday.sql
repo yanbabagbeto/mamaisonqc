@@ -1,0 +1,1 @@
+ALTER TABLE `property_unit` ADD `cadastral_lot` text;

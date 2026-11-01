@@ -19,6 +19,7 @@ export type RollDetailUnit = {
   addrStreet: string | null;
   addrSuite: string | null;
   matricule: string;
+  cadastralLot: string | null;
   umv: string | null;
   cubf: string | null;
   cubfLabel: string | null;
@@ -68,6 +69,7 @@ export function buildRollDetailSections(
         { label: rows.address, value: address },
         { label: rows.municipality, value: municipalityName ?? missing },
         { label: rows.matricule, value: unit.matricule },
+        { label: rows.cadastralLot, value: unit.cadastralLot ?? missing },
         { label: rows.umv, value: unit.umv ?? missing },
         { label: rows.use, value: useLabel || missing },
         { label: rows.type, value: propertyTypeLabel(messages, unit.propertyType) },
